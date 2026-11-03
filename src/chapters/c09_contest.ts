@@ -7,7 +7,7 @@ import { Rng } from '../core/rng';
 import type { GalaxyHost } from '../galaxy/GalaxyHost';
 import type { GEvent } from '../galaxy/GalaxySim';
 import { galaxyCenter, nodePos, MERGED_T } from '../galaxy/universe';
-import { zoomRig, LOCAL_GROUP_VIEW } from './c08_expansion';
+import { zoomRig, shoulderRig, LOCAL_GROUP_VIEW } from './c08_expansion';
 import type { Keyframe } from '../time/odyssey';
 
 /** Placeholder shots used until this run's history has been computed. */
@@ -94,8 +94,8 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     transition: { type: 'fade', dur: 1.0 },
     rig: firstGal === 0 || firstGal === 1 || firstGal === 2
       ? orbit({ center: [0, 0, 0], radius: 52, radiusTo: 46, elev: 1.0, elevTo: 0.95, az: 0.2, azTo: 0.32, fov: 34, ease: easeInOutSine })
-      : zoomRig({ t0: LOCAL_GROUP_VIEW.mid, t1: LOCAL_GROUP_VIEW.mid, d0: 1050, d1: 950, dir0: LOCAL_GROUP_VIEW.side, dir1: [0.75, 0.4, 0.62], fov: 44 }),
-    params: { su: 0.6 },
+      : shoulderRig({ T: first ? first.t0 : 1.2e9, back: 78, backTo: 70, up: 18, side: 30, sideTo: 24, look: 0.62, fov: 46, fovTo: 42 }),
+    params: { su: 0.6, territory: 2.2 },
   });
   const styles = ['regional', 'galactic', 'grazing', 'regional', 'galactic'];
   beatStory.forEach(({ d, b }, i) => {
@@ -122,9 +122,9 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     } else if (style === 'grazing') {
       rig = orbit({ center, radius: 26, radiusTo: 22, elev: 0.16, elevTo: 0.22, az, azTo: az + 0.3, fov: 34, ease: easeInOutSine });
     } else {
-      rig = orbit({ center, radius: 18, radiusTo: 14, elev: 0.75, elevTo: 0.62, az, azTo: az + 0.35, fov: 36, ease: easeInOutSine });
+      rig = orbit({ center, radius: 25, radiusTo: 20, elev: 0.85, elevTo: 0.72, az, azTo: az + 0.35, fov: 36, ease: easeInOutSine });
     }
-    shots.push({ id: `co-beat${i}-${e.type}`, stage: 'galaxy', dur: d, label: e.text, signature: b.w >= 0.85, transition: { type: 'dissolve', dur: Math.min(1.2, d * 0.3) }, rig, params: { su: 0.55 } });
+    shots.push({ id: `co-beat${i}-${e.type}`, stage: 'galaxy', dur: d, label: e.text, signature: b.w >= 0.85, transition: { type: 'dissolve', dur: Math.min(1.2, d * 0.3) }, rig, params: { su: 0.55, territory: 2.6 } });
   });
   // the end: the holder of what is left
   const lastBeat = chosen[chosen.length - 1];
@@ -134,8 +134,8 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     transition: { type: 'dissolve', dur: 1.4 },
     rig: merged
       ? orbit({ center: [0, 0, 0], radius: 95, radiusTo: 80, elev: 0.75, elevTo: 0.7, az: 0.4, azTo: 0.6, fov: 36, ease: easeInOutSine })
-      : zoomRig({ t0: [0, 0, 0], t1: LOCAL_GROUP_VIEW.mid, d0: 60, d1: 900, dir0: [-0.3, 0.8, 0.5], dir1: LOCAL_GROUP_VIEW.side, fov: 36, fovTo: 40 }),
-    params: { su: 0.7 },
+      : shoulderRig({ T: end, back: 40, backTo: 85, up: 16, side: 12, sideTo: 30, look: 0.45, fov: 40, fovTo: 46 }),
+    params: { su: 0.7, territory: 2.2 },
   });
   void lastBeat;
   return { shots, keys, duration };

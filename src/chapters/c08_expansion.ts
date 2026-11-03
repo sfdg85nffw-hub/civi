@@ -21,6 +21,26 @@ export function zoomRig(o: { t0: [number, number, number]; t1: [number, number, 
   };
 }
 
+/**
+ * Over the Milky Way's shoulder toward Andromeda: our galaxy large in the
+ * foreground, the destination small and far — the Local Group with depth.
+ */
+export function shoulderRig(o: { T: number; back: number; backTo?: number; up: number; side: number; sideTo?: number; look: number; fov?: number; fovTo?: number }): Rig {
+  return (u) => {
+    const e = easeInOutSine(Math.min(1, Math.max(0, u)));
+    const c = galaxyCenter(3, o.T);
+    const d = new THREE.Vector3(c[0], c[1], c[2]);
+    const L = d.length();
+    d.normalize();
+    const sideV = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 1, 0)).normalize();
+    const back = lerp(o.back, o.backTo ?? o.back, e);
+    const side = lerp(o.side, o.sideTo ?? o.side, e);
+    const pos = d.clone().multiplyScalar(-back).addScaledVector(sideV, side).add(new THREE.Vector3(0, o.up, 0));
+    const target = d.clone().multiplyScalar(L * o.look);
+    return { pos, target, fov: lerp(o.fov ?? 40, o.fovTo ?? o.fov ?? 40, e) };
+  };
+}
+
 const m31 = galaxyCenter(3, 3e7);
 const mid: [number, number, number] = [m31[0] * 0.5, m31[1] * 0.5, m31[2] * 0.5];
 /** a direction perpendicular to the Milky Way–Andromeda line, raised a little */
@@ -54,13 +74,13 @@ export const expansion: ChapterDef = {
     {
       id: 'ex-neighbours', stage: 'galaxy', dur: 8, label: 'Neighbours', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: zoomRig({ t0: [0, 0, 0], t1: mid, d0: 70, d1: 980, dir0: [-0.3, 0.75, 0.6], dir1: side, fov: 36, fovTo: 46 }),
+      rig: shoulderRig({ T: 1e7, back: 34, backTo: 72, up: 14, side: 10, sideTo: 26, look: 0.35, fov: 40, fovTo: 46 }),
       params: { su: 0.8 },
     },
     {
       id: 'ex-quiet', stage: 'galaxy', dur: 4, label: 'Quiet',
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: zoomRig({ t0: mid, t1: mid, d0: 980, d1: 900, dir0: side, dir1: [0.8, 0.38, 0.6], fov: 46, ease: (u) => u }),
+      rig: shoulderRig({ T: 5e8, back: 74, backTo: 80, up: 16, side: 28, sideTo: 33, look: 0.4, fov: 46 }),
       params: { su: 0.5 },
     },
   ],

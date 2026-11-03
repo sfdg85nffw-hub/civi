@@ -116,11 +116,13 @@ export class GalaxyStage extends Stage {
   }
 
   /** keep tiny sources at ≥ ~1.3 px; conserve their flux as they grow */
-  private pxSize(center: N, worldSize: N): [N, N] {
+  private pxSize(center: N, worldSize: N, maxPx = 0): [N, N] {
     const vz = modelViewMatrix.mul(vec4(center, 1.0)).z.negate().max(0.01);
     const minS = vz.mul(1.3).div(this.u.focalPx);
-    const s = max(worldSize, minS);
+    let s = max(worldSize, minS);
     const flux = worldSize.div(s).pow(2.0);
+    // stars stay points even when the camera passes close to them
+    if (maxPx > 0) s = min(s, vz.mul(maxPx).div(this.u.focalPx));
     return [s, flux];
   }
 
@@ -233,7 +235,7 @@ export class GalaxyStage extends Stage {
       softness: 2.2,
       build: (at) => {
         const p = this.place(at.a.xyz, at.a.w, at.b.z);
-        const [s, flux] = this.pxSize(p, float(0.035).add(at.b.y.mul(0.012)));
+        const [s, flux] = this.pxSize(p, float(0.035).add(at.b.y.mul(0.012)), 3.2);
         const warm = vec3(1.0, 0.72, 0.45), white = vec3(1.0, 0.95, 0.88), blue = vec3(0.62, 0.76, 1.0);
         const t = at.b.x;
         let col: N = mix(mix(warm, white, sst(0.0, 0.5, t)), blue, sst(0.5, 1.0, t));
@@ -459,7 +461,7 @@ export class GalaxyStage extends Stage {
               // the interior keeps a faint lattice; the front draws it in light as it advances
               const base = pv.mul(0.012).add(0.0022);
               const front = glow.mul(pv.mul(0.07).add(0.012));
-              return fall.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.3))).add(moire.mul(0.03)));
+              return fall.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.3))).add(moire.mul(0.09)));
             })(),
         };
       },

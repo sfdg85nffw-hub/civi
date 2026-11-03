@@ -40,6 +40,7 @@ export class CodaStage extends Stage {
   private bhPos: THREE.Vector3[] = [];
   private bhDeath: number[] = [];
   private swarmLife!: THREE.InstancedBufferAttribute;
+  private flashAttr!: THREE.InstancedBufferAttribute;
   private montageTex: THREE.CanvasTexture;
   private montageCanvas: HTMLCanvasElement;
   private montageCtx: CanvasRenderingContext2D | null;
@@ -73,6 +74,7 @@ export class CodaStage extends Stage {
     this.scene.add(this.swarms());
     this.scene.add(this.holes());
     this.scene.add(this.lastPoint());
+    this.scene.add(this.flashes());
     this.montageQuad = this.montage();
     this.camera.add(this.montageQuad);
     this.scene.add(this.camera);
@@ -189,6 +191,26 @@ export class CodaStage extends Stage {
     return mesh;
   }
 
+  /** soft Hawking flashes as each hole evaporates */
+  private flashes(): THREE.Object3D {
+    const a = new Float32Array(NBH * 4);
+    this.bhPos.forEach((p, i) => a.set([p.x, p.y, p.z, 0], i * 4));
+    const u = this.u;
+    const mesh = makeParticles({
+      count: NBH,
+      attributes: { a: [a, 4] },
+      renderOrder: 10,
+      build: (at) => ({
+        center: at.a.xyz,
+        size: float(0.6).mul(at.a.w.sqrt()).add(0.001),
+        color: mix(vec3(1.0, 0.95, 0.9), vec3(u.victor), 0.35).mul(at.a.w).mul(2.0),
+        shape: (q: N) => exp(length(q).mul(-6.0)),
+      }),
+    });
+    this.flashAttr = (mesh.userData.attrs as Record<string, THREE.InstancedBufferAttribute>).a!;
+    return mesh;
+  }
+
   private lastPoint(): THREE.Object3D {
     const one = new Float32Array([0.15, 0.05, 0.2, 0]);
     const u = this.u;
@@ -255,6 +277,12 @@ export class CodaStage extends Stage {
     }
     this.bhAttr.needsUpdate = true;
     this.swarmLife.needsUpdate = true;
+    const fl = this.flashAttr.array as Float32Array;
+    for (let i = 0; i < NBH; i++) {
+      const x = (c - this.bhDeath[i]!) / 0.35;
+      fl[i * 4 + 3] = vac || i === 0 ? 0 : Math.exp(-x * x) * (f.reducedFlash ? 0.2 : 1);
+    }
+    this.flashAttr.needsUpdate = true;
     // the last point: after the last hole, one point of computation, dimming
     const lastDeath = this.bhDeath[0]!;
     u.point.value = vac ? smoothstep(16.0, 17.0, c) * 0.7 : c < lastDeath - 0.5 ? 0 : smoothstep(lastDeath - 0.5, lastDeath, c) * (1 - 0.6 * smoothstep(lastDeath, lastDeath + 2.5, c));

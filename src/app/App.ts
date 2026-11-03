@@ -621,6 +621,9 @@ export class App {
     // UI
     this.card.update(dt);
     const codaC = this.updateCoda(chapter, s, T);
+    // at the takeover, the fork control surfaces on its own for a few seconds
+    if (this.lastT < TAKEOVER_T && T >= TAKEOVER_T && T - this.lastT < 1e4) this.forkShownUntil = this.clock + 7;
+    this.hud.forkVisible = this.clock < this.forkShownUntil && chapter === 8;
     if (codaC < 0) this.feedChronicle(T, dt);
     this.chronicle.update(dt);
     this.time.frontier = this.galaxy.done ? Infinity : Math.max(TAKEOVER_T, this.galaxy.frontier);
@@ -743,6 +746,7 @@ export class App {
   private flashEnv = 0;
   private silenceUntil = -1;
   private lastChronT = -1e12;
+  private forkShownUntil = -1;
   /** Coda */
   readonly victor = new THREE.Color(1, 1, 1);
   private victorHex = '#ffffff';
