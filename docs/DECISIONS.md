@@ -17,3 +17,8 @@ Every autonomous decision is recorded here with a short rationale. Newest at the
 - **D11 — Typeface: Lexend Exa** (SIL OFL 1.1, bundled from @fontsource), weights 100/200/300.
 - **D12 — No hard letterbox.** Frames are composed for 16:9 with a 2.2:1 action-safe band so every frame can be a wallpaper.
 - **D13 — Deploy**: the GitHub tooling in this environment cannot change repository Pages settings (no `gh api` for non-search calls), so the workflow uses `actions/configure-pages` with `enablement: true` and the README documents the one-time "Settings → Pages → Source: GitHub Actions" step.
+
+## Phase 2
+
+- **D14 — Headless captures use the WebGL2 backend.** In this container, WebGPU canvases are never composited into headless screenshots (even a raw WebGPU triangle captures blank) and three's `pushErrorScope/popErrorScope` trips a SwiftShader/Dawn "Instance dropped" quirk. Because all shaders are TSL, the WebGL2 backend renders the same images, so Playwright screenshots and e2e runs pass `?backend=webgl`. Real browsers still get WebGPU first, with automatic fallback to WebGL2 on adapter failure or device loss.
+- **D15 — TSL shader graphs are authored through an `any` façade** (`src/render/tsl/T.ts`); @types/three's TSL generics reject valid graphs (e.g. colour uniforms in vec3 math). All non-shader code stays strict.
