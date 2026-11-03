@@ -146,6 +146,26 @@ export class GalaxyHost {
     this.version++;
   }
 
+  /**
+   * Ownership changes about to happen in (cursorT, cursorT + tau]: the probes and
+   * fleets that are on their way right now (used for the slow-time agent view).
+   */
+  upcoming(tau: number, max: number, outNode: Int32Array, outOwner: Int8Array, outT: Float64Array): number {
+    let k = 0;
+    const t1 = this.cursorT + tau;
+    for (let i = this.cursorIdx; i < this.nChanges && k < max; i++) {
+      const t = this.cT[i]!;
+      if (t > t1) break;
+      const o = this.cOwner[i]!;
+      if (o < 0) continue;
+      outNode[k] = this.cNode[i]!;
+      outOwner[k] = o;
+      outT[k] = t;
+      k++;
+    }
+    return k;
+  }
+
   /** events overlapping [t0, t1] (streaks are active from t to t2) */
   eventsBetween(t0: number, t1: number, out: GEvent[] = []): GEvent[] {
     out.length = 0;

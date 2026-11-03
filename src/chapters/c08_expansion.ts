@@ -28,8 +28,15 @@ const side: [number, number, number] = [0.825, 0.33, 0.565];
 
 export const LOCAL_GROUP_VIEW = { mid, side };
 
+/** agent view while time is slow during the expansion: hover near the front around the Sun */
+export const expansionAgentShot: ShotDef = {
+  id: 'ex-agents', stage: 'galaxy', dur: 20, label: 'Probes',
+  rig: orbit({ center: [SUN_POS[0], 0, SUN_POS[2]], radius: 9, radiusTo: 7, elev: 0.7, az: 0.2, azTo: 0.5, fov: 36, ease: easeInOutSine }),
+};
+
 export const expansion: ChapterDef = {
   meta: CHAPTERS[8]!,
+  agentShot: expansionAgentShot,
   shots: [
     {
       // the ring of the swarm becomes the disk of the galaxy: same tilt, same screen size
@@ -59,8 +66,3 @@ export const expansion: ChapterDef = {
   ],
 };
 
-/** agent view while time is slow during the expansion: hover near the front around the Sun */
-export const expansionAgentShot: ShotDef = {
-  id: 'ex-agents', stage: 'galaxy', dur: 20, label: 'Probes',
-  rig: orbit({ center: [SUN_POS[0], 0, SUN_POS[2]], radius: 9, radiusTo: 7, elev: 0.7, az: 0.2, azTo: 0.5, fov: 36, ease: easeInOutSine }),
-};

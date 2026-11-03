@@ -437,6 +437,23 @@ export class App {
     return c;
   }
 
+  /** how much is happening in the galaxy right now (0..1), for the score */
+  private contestTension(T: number): number {
+    const span = Math.max(5e5, Math.abs(this.time.speed) * 3);
+    let w = 0;
+    for (const e of this.galaxy.events) {
+      if (e.t > T + span) break;
+      if (e.t > T - span && e.text) w += e.weight;
+    }
+    // after the vacuum gives way there is nothing left to score
+    const vac = this.galaxy.result?.outcome === 'vacuum' ? this.galaxy.events.find((e) => e.type === 'vacuum') : undefined;
+    if (vac && T > vac.t) {
+      this.silenceUntil = this.clock + 0.5;
+      return 0;
+    }
+    return Math.min(1, w / 4);
+  }
+
   /** feed the chronicle: terse lines for events just crossed, never a flood */
   private feedChronicle(T: number, dt: number): void {
     if (T < TAKEOVER_T || !this.galaxy.events.length) {
@@ -460,6 +477,11 @@ export class App {
       const e = this.chronQueue.shift()!;
       this.chronicle.push(formatEpoch(e.t) + '.', ' ' + e.text, 6.5);
       this.lastChronPush = this.clock;
+      // the actor's motif; a nova is heard as a far boom; the vacuum is silent
+      const actor = e.a >= 0 ? e.a : e.b;
+      const fi = actor >= 0 ? this.galaxy.factions[actor] : undefined;
+      if (e.type === 'supernova') this.audio?.cue('nuke', 0.35);
+      else if (e.type !== 'vacuum' && fi) this.audio?.motif(fi.motif, e.weight, ((actor * 0.37) % 1) * 1.2 - 0.6);
     }
     void dt;
   }
@@ -625,6 +647,7 @@ export class App {
     // audio
     if (this.audio) {
       this.hints.o2 = f.world.o2;
+      if (chapter === 8 || chapter === 9) this.hints.tension = this.contestTension(T);
       this.hints.ice = f.world.ice;
       this.audio.update({
         chapter,

@@ -163,6 +163,47 @@ export class AudioEngine {
     return this.muted;
   }
 
+  /**
+   * Faction motifs (the Contest): short, recognisable figures, each in its own
+   * timbre, played when that faction's deeds surface in the chronicle.
+   */
+  motif(name: string, weight = 0.7, pan = 0): void {
+    const s = this.shots;
+    const g = 0.6 + 0.6 * weight;
+    const m = midiToHz;
+    switch (name) {
+      case 'fifths': // the Heir: perfect fifths, pure sine
+        [57, 64, 71].forEach((n, i) => s.sine(m(n), 0.03 * g, 2.6, i * 0.22, pan, 0.01));
+        break;
+      case 'fourths': // the Lattice: rising fourths, glass
+        [74, 79, 84].forEach((n, i) => s.bell(m(n), 0.025 * g, 3, i * 0.18, pan, [1, 3.01, 5.2]));
+        break;
+      case 'formant': // the Choir: a swelling chord
+        [60, 64, 67, 71].forEach((n, i) => s.sine(m(n), 0.018 * g, 3.4, i * 0.05, pan + (i - 1.5) * 0.2, 0.9));
+        s.breath(0.025 * g, 2.6, 0.2, 1400, pan);
+        break;
+      case 'oddmeter': // the Hexarchy: five pulses in an uneven meter
+        [0, 0.18, 0.27, 0.45, 0.54].forEach((t, i) => s.pluck(m(62 + [0, 7, 3, 10, 5][i]!), 0.07 * g, t, pan, 0.7));
+        break;
+      case 'glissando': // the Mycelium: slow falling slides
+        [69, 67, 64, 62].forEach((n, i) => s.sine(m(n), 0.022 * g, 1.6, i * 0.35, pan, 0.4));
+        break;
+      case 'whisper': // the Veil: barely there
+        s.breath(0.03 * g, 2.2, 0, 4200, pan);
+        s.breath(0.02 * g, 1.8, 0.5, 6200, -pan);
+        break;
+      case 'growl': // the Furnace: a low FM roar
+        s.boom(0.18 * g, 3.5, 0, 500);
+        s.pluck(m(38), 0.12 * g, 0.05, pan, 0.2);
+        break;
+      case 'musicbox': // the Archive: small high bells
+        [84, 88, 91, 86].forEach((n, i) => s.bell(m(n), 0.02 * g, 2.2, i * 0.27, pan, [1, 4.0, 9.1]));
+        break;
+      default:
+        break;
+    }
+  }
+
   /** Discrete events from the Director and stages. */
   cue(id: string, x = 1): void {
     const s = this.shots;

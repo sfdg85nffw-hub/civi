@@ -24,6 +24,7 @@ export function setGalaxyParticleScale(s: number): void {
 const STAR_BUDGET = [380000, 40000, 18000, 280000, 70000];
 const MAXF = 12;
 const MAX_STREAKS = 900;
+const MAX_AGENTS = 1400;
 const TRAIL = 10;
 const VIS_INDEX: Record<string, number> = { hexlattice: 0, cubic: 1, rings: 2, fractalhex: 3, filaments: 4, haze: 5, spokes: 6, squares: 7 };
 
@@ -69,6 +70,9 @@ export class GalaxyStage extends Stage {
   private contested!: Uint8Array;
   private second!: Int8Array;
   private evBuf: GEvent[] = [];
+  private agNode = new Int32Array(MAX_AGENTS);
+  private agOwner = new Int8Array(MAX_AGENTS);
+  private agT = new Float64Array(MAX_AGENTS);
   private tmp: [number, number, number] = [0, 0, 0];
   private tmp2: [number, number, number] = [0, 0, 0];
 
@@ -466,7 +470,7 @@ export class GalaxyStage extends Stage {
 
   /** kill vehicles, probes, fleets (moving heads with trails) and beams (solid lines) */
   private streaks(): THREE.Mesh {
-    const n = MAX_STREAKS * TRAIL;
+    const n = MAX_STREAKS * TRAIL + MAX_AGENTS * 3;
     const e0 = new Float32Array(n * 4), e1 = new Float32Array(n * 4), e2 = new Float32Array(n * 4);
     const u = this.u;
     const mesh = makeParticles({
@@ -675,6 +679,34 @@ export class GalaxyStage extends Stage {
         fb.set(nova ? [3.5 * env, 3.0 * env, 2.6 * env, 0.25 + age * 0.6] : [0.3 * col[0]!, 0.3 * col[1]!, 0.3 * col[2]!, 0.4], nf * 4);
         nf++;
       } else if (e.type === 'vacuum') vac = e;
+    }
+    // slow time: the probes and fleets that are under way right now, from the real capture log
+    if (f.lodMix > 0.02 && f.chapter >= 8 && f.chapter <= 9) {
+      const tau = f.chapter === 8 ? 3500 : 25000;
+      const na = host.upcoming(tau, MAX_AGENTS, this.agNode, this.agOwner, this.agT);
+      for (let q = 0; q < na; q++) {
+        const j = this.agNode[q]!, o = this.agOwner[q]!;
+        // launched from a neighbour that the faction already holds
+        let src = -1;
+        for (let e = un.nbrStart[j]!; e < un.nbrStart[j + 1]!; e++)
+          if (host.owner[un.nbr[e]!] === o) {
+            src = un.nbr[e]!;
+            break;
+          }
+        if (src < 0) continue;
+        const prog = 1 - (this.agT[q]! - T0) / tau;
+        nodePos(un, src, T0, P0);
+        nodePos(un, j, T0, P1);
+        const col = host.factions[o]?.color ?? [1, 1, 1];
+        for (let tr = 0; tr < 3; tr++) {
+          if (k >= MAX_STREAKS * TRAIL + MAX_AGENTS * 3) break;
+          const qq = Math.max(0, prog - tr * 0.08);
+          e0.set([P0[0] + (P1[0] - P0[0]) * qq, P0[1] + (P1[1] - P0[1]) * qq, P0[2] + (P1[2] - P0[2]) * qq, 0], k * 4);
+          e1.set([0, 0, 0, 0.035 * (1 - tr * 0.25)], k * 4);
+          e2.set([col[0]!, col[1]!, col[2]!, (1.6 - tr * 0.5) * f.lodMix], k * 4);
+          k++;
+        }
+      }
     }
     // older vacuum events persist (the bubble only grows)
     if (!vac) for (const e of host.events) if (e.type === 'vacuum' && e.t <= T0) vac = e;

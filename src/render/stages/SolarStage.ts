@@ -15,7 +15,7 @@ const {
 
 const MERCURY_R = 1.15;
 const SUN_R = 0.3;
-const SWARM_N = 24000;
+const SWARM_N = 42000;
 
 /**
  * The Sun after us: Mercury is unmade into raw material and a Dyson swarm of
@@ -72,7 +72,7 @@ export class SolarStage extends Stage {
       let c = mix(vec3(1.0, 0.55, 0.2), vec3(1.0, 0.92, 0.75), limb).mul(gran.mul(0.25).add(0.85)).mul(cells.mul(0.15).add(0.92));
       c = c.mul(float(1.0).sub(spots.mul(0.6)));
       // the swarm takes the light: the photosphere dims as the mirrors close
-      return vec4(c.mul(limb.mul(0.7).add(0.3)).mul(4.0).mul(float(1.0).sub(u.dyson.mul(0.6))), 1.0);
+      return vec4(c.mul(limb.mul(0.8).add(0.2)).mul(2.1).mul(float(1.0).sub(u.dyson.mul(0.6))), 1.0);
     })();
     return new THREE.Mesh(new THREE.SphereGeometry(SUN_R, 128, 64), mat);
   }
@@ -89,8 +89,8 @@ export class SolarStage extends Stage {
         softness: 1.0,
         build: (at) => ({
           center: at.a.xyz,
-          size: float(1.9),
-          color: vec3(1.0, 0.72, 0.45).mul(float(1.0).sub(u.dyson.mul(0.6))).mul(0.05),
+          size: float(1.25),
+          color: vec3(1.0, 0.78, 0.55).mul(float(1.0).sub(u.dyson.mul(0.6))).mul(0.03),
           shape: (q: N) => {
             const r = length(q);
             const ray = vnoise(vec3(T.atan(q.y, q.x).mul(3.0), r.mul(2.0), u.time.mul(0.05)), 'b').mul(0.5).add(0.5);
@@ -146,19 +146,19 @@ export class SolarStage extends Stage {
 
   private buildSwarm(): THREE.InstancedMesh {
     const rng = new Rng(0xd150, 4);
-    const geo = new THREE.CircleGeometry(0.011, 6);
+    const geo = new THREE.CircleGeometry(0.0075, 6);
     const n = SWARM_N;
     const inst = new Float32Array(n * 4);
     const inst2 = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
       // swarm: ~60 orbital rings, most near the ecliptic (a thick ring that reads as a disk), a few steep
-      const ring = rng.int(0, 59);
+      const ring = rng.int(0, 139);
       const ringRng = new Rng(ring * 7919, 1);
-      const inc = ring < 46 ? ringRng.normal(0, 0.12) : ringRng.range(-1.1, 1.1);
+      const inc = ring < 118 ? ringRng.normal(0, 0.1) : ringRng.range(-1.1, 1.1);
       const node = ringRng.range(0, Math.PI * 2);
-      const r = ringRng.range(0.62, 1.9) + rng.normal(0, 0.006);
+      const r = ringRng.range(0.62, 1.9) + rng.normal(0, 0.018);
       inst.set([r, inc, node, rng.next() * Math.PI * 2], i * 4);
-      inst2.set([rng.next(), ring / 60, rng.next(), 0], i * 4);
+      inst2.set([rng.next(), ring / 140, rng.next(), 0], i * 4);
     }
     geo.setAttribute('sw', new THREE.InstancedBufferAttribute(inst, 4));
     geo.setAttribute('sw2', new THREE.InstancedBufferAttribute(inst2, 4));
@@ -191,7 +191,7 @@ export class SolarStage extends Stage {
       const H = normalize(L.add(V));
       const glint = pow(max(abs(dot(nrm, H)), 0.0), 160.0).mul(10.0);
       const facing = dot(nrm, V);
-      const lit = vec3(0.7, 0.76, 0.85).mul(max(facing, 0.0).mul(0.8).add(0.2)).mul(irr).mul(0.6);
+      const lit = vec3(0.85, 0.82, 0.74).mul(max(facing, 0.0).mul(0.8).add(0.2)).mul(irr).mul(0.85);
       const heat = vec3(0.5, 0.07, 0.015).mul(irr).mul(0.12);
       const shimmer = sin(u.time.mul(2.0).add(B.z.mul(40.0))).mul(0.3).add(0.7);
       const col = facing.greaterThan(0.0).select(lit, heat).add(vec3(1.0, 0.88, 0.66).mul(glint.mul(shimmer).mul(irr)));
