@@ -36,7 +36,7 @@ export const multicellular: ChapterDef = {
       id: 'mc-snowball', stage: 'planet', dur: 3.5, label: 'The second Snowball',
       transition: { type: 'dissolve', dur: 1.0 },
       rig: orbit({ radius: 4.8, radiusTo: 4.5, elev: 0.2, az: 0.0, azTo: 0.25, fov: 34, ease: easeInOutSine, targetOffset: [0.5, 0, 0] }),
-      params: { lat: 10, lon: 40, spin: 40, sunAz: 125, sunEl: 18, stars: 0.12, su: 0.5 },
+      params: { lat: 10, lon: 40, spin: 40, sunAz: 92, sunEl: 26, stars: 0.12, su: 0.5 },
     },
     {
       id: 'mc-ediacara', stage: 'seafloor', dur: 3, label: 'Ediacara',

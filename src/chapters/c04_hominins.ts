@@ -12,8 +12,8 @@ export const hominins: ChapterDef = {
     {
       id: 'h-africa', stage: 'planet', dur: 5, label: 'Africa, the ice ages breathing',
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: orbit({ radius: 3.2, radiusTo: 2.9, elev: 0.08, az: -0.15, azTo: 0.05, fov: 32, ease: easeInOutSine, targetOffset: [0.15, 0.05, 0] }),
-      params: { lat: 8, lon: 22, spin: 10, sunAz: 140, sunEl: 12, stars: 0.18, su: 0.6 },
+      rig: orbit({ radius: 3.2, radiusTo: 2.9, elev: 0.08, az: -0.15, azTo: 0.05, fov: 32, ease: easeInOutSine, targetOffset: [-0.15, 0.05, 0] }),
+      params: { lat: 8, lon: 22, spin: 10, sunAz: -142, sunEl: 12, stars: 0.18, su: 0.6 },
     },
     {
       id: 'h-fire', stage: 'fire', dur: 5, label: 'The first flame', signature: true,

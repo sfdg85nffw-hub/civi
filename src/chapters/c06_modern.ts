@@ -21,7 +21,7 @@ export const modern: ChapterDef = {
       id: 'mo-sail', stage: 'planet', dur: 4, label: 'Sail',
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ radius: 3.1, radiusTo: 2.9, elev: 0.15, az: 0.05, azTo: -0.08, fov: 34, ease: easeInOutSine, targetOffset: [0.0, 0.1, 0] }),
-      params: { lat: 22, lon: -38, spin: 14, sunAz: 150, sunEl: 12, stars: 0.16, su: 0.6 },
+      params: { lat: 22, lon: -38, spin: 14, sunAz: -150, sunEl: 12, stars: 0.16, su: 0.6 },
     },
     ignite,
     {

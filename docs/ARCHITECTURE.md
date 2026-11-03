@@ -20,7 +20,8 @@ src/
   sim/agents/*.ts         pure-TS local-rule simulations (also run in Node for tests)
   sim/sim.worker.ts       hosts the active agent simulation, fixed-step, posts transferable snapshots
   sim/SimHost.ts          main-thread proxy: spawn/condense/dissolve, snapshot interpolation
-  galaxy/universe.ts      star-cluster graph (≈36 k nodes over the Local Group and beyond)
+  galaxy/universe.ts      star-cluster graph (24 k nodes over the Local Group), galaxy motion (Clouds merge, Andromeda collides)
+  galaxy/factions.ts      archetypes, strategic genomes, goal compatibility, OKLab colour mixing
   galaxy/GalaxySim.ts     Regime B strategy sim (light-delayed knowledge, tactics, outcomes)
   galaxy/chronicle.ts     template-grammar chronicle
   galaxy/galaxy.worker.ts runs GalaxySim, streams event log + checkpoints
@@ -78,11 +79,17 @@ Per chapter: `lodThreshold` (yr/s). `lodMix = smoothstep(log10(th·3), log10(th/
 
 ## GalaxySim (Regime B)
 
-- Universe: ≈36 k star-cluster nodes — Milky Way (≈14 k), Andromeda (≈11 k), Triangulum, LMC, SMC and seven galaxies beyond the Local Group; k-NN edges within galaxies plus long intergalactic edges.
-- Factions: the Heir + 3–6 rivals with strategic genomes; emergence at seeded node/time.
-- **Light-delayed knowledge**: each node keeps a compact ownership history; a faction's view of a node is the state at `t − d/c` where `d` is the distance from that faction's nearest presence. Decisions (attack, RKV launch, treaty, go dark) use only that view. Projectiles (RKVs, probes, laser beams) travel at their real speeds.
-- Frontier-only stepping (active node lists), fixed `dt` in sim years, adaptive per era. Output: an event log (ownership changes, strikes, megastructures, chronicle events) and checkpoints. Runs the full history (to resolution or +60 Gyr) in a worker in a few seconds; deterministic per seed (state hashes tested); balance tested over 60 seeds.
-- Outcomes: single victor, merger, mutual annihilation (remnants), vacuum decay.
+- Universe: 24 000 star-cluster nodes — Milky Way 17 k, Andromeda 4.3 k, Triangulum 1.1 k, LMC 1.1 k, SMC 0.5 k — sampled from exponential disks with logarithmic spiral arms, bars and bulges; k = 7 nearest-neighbour edges within each galaxy (CSR). Galaxy centres move with time (`galaxyCenter`): the Clouds fall in by +2.4 Gyr, Andromeda passes at +4.5 Gyr and merges by +6.5 Gyr.
+- Factions: the Heir (born at Sol at the takeover) + 3–6 rivals (natives, intruders from between galaxies, one possibly ancient and hidden) with strategic genomes (expansion, aggression, risk, stealth, deception, cooperation, terminal goal, megastructure).
+- **Light-delayed belief**: each faction keeps a history of snapshots (power, node count, emission, core systems); what A believes about B is B's snapshot from one light-travel-time ago (minimum sample-pair distance / c). Wars, RKV targeting, beams, invasions and treaties use only that belief; projectiles hit whoever is there on arrival.
+- Mechanics: frontier-only stepping (active node list), adaptive dt (200 yr → 4 kyr in expansion, 20–200 kyr in wars, up to 100 Myr when quiet), net-pressure fronts with consolidation, mobilisation by power ratio (decisive in the endgame), RKVs, Nicoll–Dyson beams, triggered supernovae, star-lifting, Shkadov stars, black-hole engineering, going dark, treaties, betrayal, value-merging, invasion fleets across intergalactic gaps, total war with poisoned ground, false-vacuum decay, stalemate exhaustion.
+- Output: change log (time, node, owner, star state), events (with chronicle text and director weight), checkpoints every 16 384 changes with state hashes; `galaxy.worker.ts` streams it while computing (≈1–3 s per run); `GalaxyHost` reconstructs the galaxy at any T (replay forward, restore from checkpoint backward) and exposes upcoming captures for the slow-time agent view.
+- Outcomes: single victor, merger, mutual annihilation (remnants), vacuum decay. Balance: `npm run test:balance` (50 seeds).
+- The Contest is cut from the history (`chapters/c09_contest.ts::buildContest`): beats → Odyssey time keys + shots.
+
+## Coda
+
+`chapters/c10_coda.ts` (shots and the `CODA` timetable) + `App.updateCoda` (sound, true black, UI, spark save, ring, rest) + `GalaxyStage` (saturation of held galaxies, candles) + `CodaStage` (dying stars, swarms around seven black holes with screen-space lensing via `viewportSharedTexture`, evaporation, the last point, the Recorder montage) + `VentStage` for the Return (a pure function of prologue time, so the frame is identical except for the spark colour).
 
 ## Director
 
@@ -116,5 +123,5 @@ Every 0.9 s of story time it downsamples the canvas (`drawImage` right after the
 
 ## Tests
 
-- Vitest: rng streams, time format, Odyssey round-trip, FateField invariance across seeds (each agent sim run headless), GalaxySim determinism (checkpoint hashes), balance (≥60 seeds: outcome and winner variety, no goal > 40 %), chronicle grammar.
-- Playwright: smoke (Begin → no console errors), deep-link screenshots for every signature shot, Odyssey contact sheet (one frame per 2 story-seconds).
+- Vitest: rng streams, time format, Odyssey round-trip, FateField invariance across seeds (each agent sim run headless), GalaxySim determinism (checkpoint hashes), seed variety, the Heir's expansion, balance (8 seeds by default; 50 with `npm run test:balance`: ≥3 outcome types, ≥4 winners, no goal/megastructure/faction > 42 %).
+- Playwright: smoke (Begin → no console errors; deep links into every chapter). Scripts: `capture-shots.mjs` (every shot via deep links, run against `vite preview`), `debug-page.mjs`, `probe-frame.mjs`, `galaxy-batch.ts` (headless outcome statistics).

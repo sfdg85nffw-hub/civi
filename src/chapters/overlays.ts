@@ -95,7 +95,7 @@ PlanetStage.overlays[5] = (stage, f) => {
         const i = (y * fld.w + x) * 4;
         void blur;
         const b = d[i + 3]! * (0.25 + f.lodMix * 0.4);
-        return [blur(0) * 0.018 + b * d[i]! * 0.1, blur(1) * 0.018 + b * d[i + 1]! * 0.1, blur(2) * 0.018 + b * d[i + 2]! * 0.1];
+        return [blur(0) * 0.028 + b * d[i]! * 0.1, blur(1) * 0.028 + b * d[i + 1]! * 0.1, blur(2) * 0.028 + b * d[i + 2]! * 0.1];
       });
     }
   }
@@ -111,8 +111,9 @@ PlanetStage.overlays[5] = (stage, f) => {
       const w = cityWeight(c, year);
       o.lat = c.lat;
       o.lon = c.lon;
-      o.size = 0.004 + 0.006 * Math.sqrt(w);
-      let k = (2.0 + 6.0 * civ) * w;
+      // the first cities are few, so each must read: brighter and a little larger early on
+      o.size = 0.005 + 0.008 * Math.sqrt(w);
+      let k = (3.6 + 6.0 * civ) * w;
       if (plagueFront > 0) {
         const D = Math.PI / 180;
         const dd = Math.acos(Math.sin(c.lat * D) * Math.sin(45.03 * D) + Math.cos(c.lat * D) * Math.cos(45.03 * D) * Math.cos((c.lon - 35.38) * D)) / D;

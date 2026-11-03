@@ -9,7 +9,7 @@ const empires: ShotDef = {
   id: 'an-empires', stage: 'planet', dur: 9, label: 'Empires breathe', signature: true,
   transition: { type: 'blend', dur: 2.0 },
   rig: orbit({ radius: 2.35, radiusTo: 2.15, elev: 0.12, az: -0.08, azTo: 0.08, fov: 32, ease: easeInOutSine, targetOffset: [0.0, 0.1, 0] }),
-  params: { lat: 39, lon: 20, spin: 8, sunAz: 150, sunEl: 12, stars: 0.16, su: 0.7 },
+  params: { lat: 39, lon: 20, spin: 8, sunAz: -152, sunEl: 12, stars: 0.16, su: 0.7 },
 };
 
 export const ancient: ChapterDef = {
