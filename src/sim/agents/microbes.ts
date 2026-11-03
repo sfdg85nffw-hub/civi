@@ -522,6 +522,10 @@ export class MicrobeSim implements AgentSim {
     if (this.agentsOn) {
       this.agentStep(dt, fate);
       this.splat();
+      this.blur(this.A);
+      this.blur(this.P);
+      this.blur(this.A);
+      this.blur(this.P);
     } else {
       this.fieldFate(fate);
       const iters = 4;

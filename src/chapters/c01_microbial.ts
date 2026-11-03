@@ -17,7 +17,7 @@ export const microbial: ChapterDef = {
     {
       id: 'm-young', stage: 'planet', dur: 4.5, label: 'The young Earth (match cut)',
       transition: { type: 'match', dur: 1.2 },
-      rig: push({ from: [0, 0, 7.66], to: [0.35, 0.12, 4.3], target: [0, 0, 0], targetTo: [0.12, 0.05, 0], fov: 30, fovTo: 30, ease: easeOutCubic }),
+      rig: push({ from: [0, 0, 7.66], to: [0.35, 0.12, 4.3], target: [-1.25, 0.2, 0], targetTo: [-0.3, 0.05, 0], fov: 30, fovTo: 30, ease: easeOutCubic }),
       params: { lat: 12, lon: -40, spin: 14, sunAz: 105, sunEl: 8, moon: 1, su: 0.75 },
     },
     {

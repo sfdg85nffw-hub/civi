@@ -98,7 +98,7 @@ export class MicroStage extends Stage {
       const density = sst(0.18, 1.1, bio);
       const procedural = lifeCol.mul(density.pow(1.4).mul(cellsTex.add(0.12))).mul(0.55).mul(u.fieldGain);
       // EPS film: a soft autofluorescent haze under the living cells
-      const eps = mix(vec3(0.9, 0.62, 0.2), vec3(0.2, 0.75, 0.6), hueMix).mul(sst(0.02, 1.0, bio)).mul(0.11).mul(float(1.0).sub(u.fieldGain).add(0.25)).mul(mx_noise_float(vec3(q.mul(30.0), u.time.mul(0.05))).mul(0.3).add(0.85));
+      const eps = mix(vec3(0.9, 0.62, 0.2), vec3(0.2, 0.75, 0.6), hueMix).mul(sst(0.05, 1.6, bio)).mul(0.07).mul(float(1.0).sub(u.fieldGain).add(0.2)).mul(mx_noise_float(vec3(q.mul(30.0), u.time.mul(0.05))).mul(0.3).add(0.85));
       const glow = procedural.add(eps);
       // substrate shimmer where nutrients are rich
       const nutr = vec3(0.12, 0.08, 0.05).mul(U.mul(U)).mul(0.12);
@@ -201,10 +201,13 @@ export class MicroStage extends Stage {
       const septa = sst(0.07, 0.0, abs(segs.sub(0.5)).sub(0.43).abs()).mul(inside).mul(sst(0.5, 1.5, vRod));
       const sizeJ = fract(vSeed.mul(7.31)).mul(0.5).add(0.75);
       const body = tint.mul(inside.mul(0.022).add(nuc.mul(0.012)).add(gran.mul(0.16)));
-      const rim = tint.mul(0.7).add(0.3).mul(fres.mul(1.35).mul(sizeJ)).add(tint.mul(septa.mul(0.5)));
+      // dark-field: one crisp refractive boundary, a faint volumetric falloff inside
+      const edge = exp(d.div(0.085).pow(2.0).negate());
+      const vol = float(1.0).sub(nz).pow(3.0).mul(inside).mul(0.35);
+      const rim = tint.mul(0.65).add(0.35).mul(edge.mul(1.25).add(vol).mul(sizeJ)).add(tint.mul(septa.mul(0.45)));
       const glintC = vec3(0.0);
       const col = body.add(rim).add(glintC).mul(float(1.0).sub(starving.mul(0.65))).add(tint.mul(vFlash.mul(fres.add(inside.mul(0.15))).mul(0.9)));
-      return vec4(col.mul(vVis), 1.0);
+      return vec4(col.mul(vVis).mul(1.6), 1.0);
     })();
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -295,7 +298,7 @@ export class MicroStage extends Stage {
     // sunlight colour through the haze: amber → white as the sky clears
     const clear = clamp01(1 - f.world.haze * 1.1);
     (u.sunTint.value as THREE.Color).setRGB(1.0, 0.6 + 0.35 * clear, 0.3 + 0.62 * clear);
-    u.fieldGain.value = 1 - 0.7 * f.lodMix;
+    u.fieldGain.value = Math.pow(1 - f.lodMix, 2);
     this.uploadAgents(f);
     void shot;
   }
