@@ -3,6 +3,7 @@ import type { ChapterId } from '../chapters/meta';
 import type { WorldState } from '../fate/world';
 import type { QualitySettings } from '../render/Renderer';
 import type { AgentFrame } from '../sim/SimHost';
+import type { GalaxyHost } from '../galaxy/GalaxyHost';
 
 /** Everything a stage needs to draw one frame. Render-agnostic data only. */
 export interface FrameContext {
@@ -27,6 +28,8 @@ export interface FrameContext {
   /** spark colour, linear RGB */
   spark: THREE.Color;
   seed: number;
+  /** Regime B history (null before it exists) */
+  galaxy: GalaxyHost | null;
   /** true during the very first frames after a stage becomes visible */
   freshStage: boolean;
   /** latest local-rule simulation snapshot for this chapter (or null) */

@@ -22,6 +22,11 @@ import { Timeline } from '../ui/Timeline';
 import { loadPrefs, loadSpark, savePrefs } from './prefs';
 import { parseSeed, randomSeed, seedToString } from '../core/rng';
 import { clamp, damp, hexToLinear, smoothstep } from '../core/math';
+import { GalaxyHost } from '../galaxy/GalaxyHost';
+import type { GEvent } from '../galaxy/GalaxySim';
+import { formatEpoch } from '../galaxy/chronicle';
+import { buildContest, contest } from '../chapters/c09_contest';
+import { setGalaxyParticleScale } from '../render/stages/GalaxyStage';
 
 export interface DeepLink {
   autostart: boolean;
@@ -84,6 +89,12 @@ export class App {
   audio: AudioEngine | null = null;
   readonly recorder = new Recorder();
   readonly sims = new SimHost();
+  /** Regime B: the galactic history for this run's seed, computed in a worker */
+  readonly galaxy = new GalaxyHost();
+  private contestDefault = contest.shots;
+  private pendingSeek: (() => void) | null = null;
+  private chronQueue: GEvent[] = [];
+  private lastChronPush = -10;
   private stages = new Map<string, Stage>();
   private ui!: HTMLElement;
   private hud!: HUD;
@@ -114,6 +125,7 @@ export class App {
 
   constructor() {
     this.link = parseDeepLink(location.search);
+    this.galaxy.onDone(() => this.onGalaxyDone());
   }
 
   async boot(): Promise<void> {
@@ -270,6 +282,8 @@ export class App {
   private begin(withAudio: boolean): void {
     this.start?.hide();
     this.start = null;
+    setGalaxyParticleScale(this.renderer.quality.particles);
+    if (this.galaxyRunSeed !== this.seed) this.startGalaxy();
     if (withAudio && !this.link.mute) {
       try {
         this.audio = new AudioEngine();
@@ -291,6 +305,15 @@ export class App {
       this.time.seekStory(L.s);
     } else if (L.chapter !== null) {
       const ch = clamp(Math.round(L.chapter), 0, 10);
+      if (ch >= 9 && !this.galaxy.done) {
+        // the Contest's shots exist only once this run's history has been written
+        this.time.seekStory(this.time.odyssey.span(8).s1 - 0.5);
+        this.pendingSeek = () => {
+          this.pendingSeek = null;
+          this.begin(false);
+        };
+        return;
+      }
       if (L.shot !== null) {
         const list = this.director.shotsFor(ch);
         const it = list[clamp(Math.round(L.shot), 0, list.length - 1)];
@@ -310,11 +333,69 @@ export class App {
     if (this.time.T < TAKEOVER_T * 0.98) return;
     this.seed = randomSeed();
     this.chronicle.clear();
+    this.startGalaxy();
+    // the future begins again at the takeover
+    if (this.time.mode === 'odyssey') this.time.seekStory(this.time.odyssey.span(8).s0 + 0.01);
+    else this.time.seekT(TAKEOVER_T * 1.001);
+    this.director.reset();
     this.hud.reveal(4);
+  }
+
+  private galaxyRunSeed = -1;
+  private startGalaxy(): void {
+    this.galaxyRunSeed = this.seed;
+    this.galaxy.start(this.seed);
+    contest.shots = this.contestDefault;
+    this.time.odyssey.setContest(2.0e10, 45);
+    this.chronQueue = [];
+  }
+
+  /** the history is written: cut the Contest from it */
+  private onGalaxyDone(): void {
+    const g = this.galaxy;
+    if (!g.result) return;
+    const c = buildContest(g);
+    contest.shots = c.shots;
+    const s = this.time.storyTime;
+    const T = this.time.T;
+    const contestS0 = this.time.odyssey.span(9).s0;
+    this.time.frontier = Infinity;
+    this.time.odyssey.setContest(g.result.endT, c.duration, c.keys);
+    // keep the viewer at the same moment: story positions before the Contest are unchanged
+    if (this.time.mode === 'odyssey') this.time.seekStory(s < contestS0 ? s : this.time.odyssey.s(T));
+    this.pendingSeek?.();
+  }
+
+  /** feed the chronicle: terse lines for events just crossed, never a flood */
+  private feedChronicle(T: number, dt: number): void {
+    if (T < TAKEOVER_T || !this.galaxy.events.length) {
+      this.lastChronT = T;
+      return;
+    }
+    const t0 = this.lastChronT, t1 = T;
+    this.lastChronT = T;
+    if (t1 > t0 && t1 - t0 < Math.max(5e9, Math.abs(this.time.speed) * 2)) {
+      for (const e of this.galaxy.events) {
+        if (e.t > t1) break;
+        if (e.t > t0 && e.text) this.chronQueue.push(e);
+      }
+      if (this.chronQueue.length > 4) {
+        // keep the weightiest few, in order
+        const keep = this.chronQueue.slice().sort((a, b) => b.weight - a.weight).slice(0, 3);
+        this.chronQueue = this.chronQueue.filter((e) => keep.includes(e));
+      }
+    } else if (t1 < t0) this.chronQueue = [];
+    if (this.chronQueue.length && this.clock - this.lastChronPush > 1.7) {
+      const e = this.chronQueue.shift()!;
+      this.chronicle.push(formatEpoch(e.t) + '.', ' ' + e.text, 6.5);
+      this.lastChronPush = this.clock;
+    }
+    void dt;
   }
 
   newRun(): void {
     this.seed = randomSeed();
+    this.startGalaxy();
     this.recorder.reset();
     this.chronicle.clear();
     this.time.resting = false;
@@ -354,6 +435,7 @@ export class App {
     this.cueTimes.set(id, this.clock);
     this.audio?.cue(id, x);
     if (id === 'impact' || id === 'nuke' || id === 'supernova') this.flashEnv = id === 'nuke' ? 0.6 : 1;
+    if (id === 'lastlight') this.silenceUntil = this.clock + 2.8;
   }
 
   setHint(k: string, v: number): void {
@@ -430,6 +512,7 @@ export class App {
       reducedFlash: this.reducedFlash,
       spark: this.spark,
       seed: this.seed,
+      galaxy: this.galaxy,
       freshStage: false,
       agents: this.sims.latest,
       cue: (id, x) => this.fireCue(id, x),
@@ -442,12 +525,14 @@ export class App {
 
     // UI
     this.card.update(dt);
+    this.feedChronicle(T, dt);
     this.chronicle.update(dt);
+    this.time.frontier = this.galaxy.done ? Infinity : Math.max(TAKEOVER_T, this.galaxy.frontier);
     const total = this.time.odyssey.total;
     const hudShown = this.hud.root.classList.contains('show');
     this.timeline.interactive = hudShown;
     this.timeline.opacity = damp(this.timeline.opacity, hudShown ? 1 : 0, 4, dt);
-    this.timeline.update(s / total, null);
+    this.timeline.update(s / total, this.galaxy.done ? null : this.time.odyssey.s(Math.max(TAKEOVER_T, this.galaxy.frontier)) / total);
     this.hud.update(dt, {
       T,
       speed: this.time.speed,
@@ -473,7 +558,7 @@ export class App {
         dt,
         lodMix: this.lodMix,
         hints: this.hints,
-        music: this.audioOverride.music ?? 1,
+        music: this.clock < this.silenceUntil ? 0 : this.audioOverride.music ?? 1,
         toneDb: this.audioOverride.toneDb ?? (chapter === 0 ? -40 : -52),
         chord: this.audioOverride.chord ?? 0,
       });
@@ -483,7 +568,8 @@ export class App {
 
     if (!this.ready) {
       this.readyFrames++;
-      if (this.readyFrames >= this.link.warm) this.ready = true;
+      const galaxyPending = this.link.capture && this.time.chapter >= 8 && !this.galaxy.done;
+      if (this.readyFrames >= this.link.warm && !this.pendingSeek && !galaxyPending) this.ready = true;
     }
   }
 
@@ -556,6 +642,8 @@ export class App {
 
   stageFade = 1;
   private flashEnv = 0;
+  private silenceUntil = -1;
+  private lastChronT = -1e12;
   /** capture mode: frames still allowed to advance time after ready */
   private runFrames = 0;
 
@@ -576,6 +664,10 @@ export class App {
         phase: this.phase,
         frames: this.frameNo,
         total: this.time.odyssey.total,
+        galaxyDone: this.galaxy.done,
+        frontier: this.galaxy.frontier,
+        changes: this.galaxy.nChanges,
+        outcome: this.galaxy.result?.outcome ?? null,
       }),
       seek: (s: number) => {
         this.time.seekStory(s);

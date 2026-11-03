@@ -7,6 +7,8 @@ import { PRESENT_YEAR } from '../time/format';
 import { MODERN_CITIES, FIBER_LINKS, SEA_LANES } from '../data/modern';
 import { CITY_STRIDE, canonicalLight } from '../sim/agents/cities';
 import type { Route } from '../data/history';
+import { DATACENTERS, LAST_LIGHT, LAST_LIGHT_T } from '../data/singularity';
+import { SPARK_STRIDE } from '../sim/agents/lattice';
 
 /** Chapter 4: bands as firelight on the night side; the dispersal field as a faint glow at speed. */
 PlanetStage.overlays[4] = (stage, f) => {
@@ -237,4 +239,74 @@ PlanetStage.overlays[6] = (stage, f) => {
     stage.bolideU.vel.value.set(base[0]! + 0.3, base[1]! + 0.1, base[2]!);
     stage.bolideU.on.value = Math.sin(Math.PI * Math.min(1, m * 1.2)) * 0.5;
   }
+};
+
+// ---------------------------------------------------------------- Chapter 7
+
+PlanetStage.overlays[7] = (stage, f) => {
+  ensureModern(stage);
+  stage.u.speckle.value = 1;
+  if (threads) threads.mesh.visible = false;
+  lanes!.mesh.visible = false;
+  mesh!.mesh.visible = true;
+  mesh!.u.year.value = 2026 + f.T;
+  mesh!.u.time.value = f.time;
+  // the fibre mesh dies with the people it connected
+  mesh!.u.vis.value = Math.max(0, f.world.humanLights) * 1.4;
+  (mesh!.u.sun.value as import('three/webgpu').Vector3).copy(stage.u.sun.value as import('three/webgpu').Vector3);
+  // canonical city lights of 2026 (the lattice shader extinguishes them as it passes)
+  lightAcc.fill(0);
+  MODERN_CITIES.forEach((c, i) => {
+    const L = canonicalLight(2026, c[3], c[4]);
+    for (const fp of footprints![i]!) lightAcc[fp.i]! += L * fp.w;
+  });
+  stage.setEmissive(77, EW, EH, (x, y) => {
+    const v = Math.min(2.5, lightAcc[y * EW + x]!) * 1.4;
+    return [v, v * 0.8, v * 0.57];
+  });
+  const ag = f.agents;
+  const snap = ag && ag.sim === 'lattice' ? ag.snap : null;
+  const nS = snap && f.lodMix > 0.02 ? snap.count - 1 : 0;
+  const dc = f.world.datacenters;
+  const lastOn = f.T < LAST_LIGHT_T ? 1 : Math.max(0, 1 - (f.T - LAST_LIGHT_T) * 60);
+  stage.setGlobeAgents(DATACENTERS.length + nS + 1, (i, o) => {
+    if (i < DATACENTERS.length) {
+      const [la, lo] = DATACENTERS[i]!;
+      o.lat = la;
+      o.lon = lo;
+      o.size = 0.006 + 0.01 * Math.min(1, dc);
+      const v = dc * 3.5;
+      o.r = 0.75 * v;
+      o.g = 0.88 * v;
+      o.b = 1.0 * v;
+      o.seed = i * 0.13;
+      return;
+    }
+    if (i === DATACENTERS.length + nS) {
+      // the last human light: small, warm, flickering — and then not
+      const flick = 0.75 + 0.25 * Math.sin(f.time * 11) * Math.sin(f.time * 3.7);
+      o.lat = LAST_LIGHT[0];
+      o.lon = LAST_LIGHT[1];
+      o.size = 0.0035;
+      const v = 2.2 * lastOn * flick * Math.max(0.15, 1 - f.world.humanLights * 0.9);
+      o.r = v;
+      o.g = 0.6 * v;
+      o.b = 0.28 * v;
+      o.seed = 0.77;
+      return;
+    }
+    const k = (i - DATACENTERS.length) * SPARK_STRIDE;
+    const s = snap!.agents;
+    o.lat = s[k]!;
+    o.lon = s[k + 1]!;
+    const alive = s[k + 2]!;
+    const flare = s[k + 3]!;
+    o.size = 0.002 + flare * 0.003 * alive;
+    const v = (alive * (0.6 + flare * 2.4) + (1 - s[k + 5]!) * (1 - alive) * 1.5) * f.lodMix;
+    o.r = v;
+    o.g = 0.62 * v;
+    o.b = 0.3 * v;
+    o.seed = s[k + 4]!;
+  });
+  if (f.T >= LAST_LIGHT_T && f.T < LAST_LIGHT_T + 0.3) f.cue('lastlight');
 };

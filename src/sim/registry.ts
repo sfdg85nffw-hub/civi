@@ -5,6 +5,7 @@ import { EcosystemSim } from './agents/ecosystem';
 import { BandSim } from './agents/bands';
 import { PolitySim } from './agents/polities';
 import { CitySim } from './agents/cities';
+import { LatticeSim } from './agents/lattice';
 
 /** Agent simulations by id (constructed inside the worker, or in Node for tests). */
 export const SIM_FACTORIES: Record<string, () => AgentSim> = {
@@ -14,4 +15,5 @@ export const SIM_FACTORIES: Record<string, () => AgentSim> = {
   bands: () => new BandSim(),
   polities: () => new PolitySim(),
   cities: () => new CitySim(),
+  lattice: () => new LatticeSim(),
 };

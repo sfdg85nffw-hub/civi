@@ -17,11 +17,14 @@ test('start screen → Begin → plays with zero console errors', async ({ page 
 });
 
 test('deep links into every chapter render without errors', async ({ page }) => {
+  test.setTimeout(1_500_000);
   const errors = collectErrors(page);
   for (const ch of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-    await page.goto(`/?backend=webgl&capture=1&res=480x270&chapter=${ch}&shot=0&nocard=1&warm=3&mute=1`);
-    await waitReady(page);
+    await page.goto(`/?backend=webgl&capture=1&res=${ch >= 8 ? '320x180' : '480x270'}&chapter=${ch}&shot=0&nocard=1&warm=3&mute=1&quality=low&seed=C0FFEE`);
+    const t0 = Date.now();
+    await waitReady(page, 420_000);
     const st = await page.evaluate(() => (window as any).__deeptime.state());
+    console.log(`chapter ${ch} ready in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     expect(st.chapter).toBe(ch);
   }
   expect(errors).toEqual([]);

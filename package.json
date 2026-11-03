@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
     "e2e:smoke": "playwright test e2e/smoke.spec.ts",
-    "check": "npm run build && npm test && npm run e2e:smoke"
+    "check": "npm run build && npm test && npm run e2e:smoke",
+    "test:balance": "BALANCE=1 vitest run tests/galaxy.test.ts"
   },
   "dependencies": {
     "three": "^0.187.0"

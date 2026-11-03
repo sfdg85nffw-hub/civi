@@ -7,6 +7,7 @@ import { ATMO_R, raySphere, scatter, type AtmoUniforms } from '../tsl/atmosphere
 import { makeParticles } from '../particles';
 import { vnoise } from '../tsl/noiseTex';
 import { NPLATES, plateRotations, qInv, qRot, ll, type Quat } from '../../data/paleo';
+import { DATACENTERS, LAST_LIGHT, LAST_LIGHT_T } from '../../data/singularity';
 import { Rng } from '../../core/rng';
 import { clamp01, damp, DEG, lerp, smoothstep } from '../../core/math';
 import landmaskUrl from '../../assets/earth/landmask.png?url';
@@ -102,6 +103,10 @@ export class PlanetStage extends Stage {
     nightBoost: uniform(1),
     sunLocal: uniform(new THREE.Vector3(1, 0, 0)),
     speckle: uniform(1),
+    lattice: uniform(0),
+    latticeHole: uniform(0.0),
+    lastLightDir: uniform(new THREE.Vector3(0, 0, 1)),
+    datacenters: uniform(0),
     moonlight: uniform(0.035),
     speckleLo: uniform(0.72),
     stars: uniform(0.2),
@@ -137,8 +142,32 @@ export class PlanetStage extends Stage {
   private lastImpactShot = '';
   params: PlanetParams = { lat: 10, lon: 20, spin: 8, sunAz: 55, sunEl: 12, moon: 0 };
 
+  private dcU: N;
+  private dcE1: N;
+  private dcE2: N;
   constructor() {
     super();
+    this.dcU = uniformArray(DATACENTERS.map(([la, lo]) => {
+      const v = ll(la, lo);
+      return new THREE.Vector4(v[0], v[1], v[2], 0);
+    }), 'vec4');
+    // each datacenter nucleates its own crystal grain with its own lattice orientation
+    const e1s: THREE.Vector4[] = [], e2s: THREE.Vector4[] = [];
+    DATACENTERS.forEach(([la, lo], i) => {
+      const c = new THREE.Vector3(...ll(la, lo));
+      const up = Math.abs(c.y) > 0.95 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+      const a = new THREE.Vector3().crossVectors(up, c).normalize();
+      const b = new THREE.Vector3().crossVectors(c, a).normalize();
+      const th = ((i * 0.618034) % 1) * (Math.PI / 3);
+      const e1 = a.clone().multiplyScalar(Math.cos(th)).addScaledVector(b, Math.sin(th));
+      const e2 = new THREE.Vector3().crossVectors(c, e1);
+      e1s.push(new THREE.Vector4(e1.x, e1.y, e1.z, 0));
+      e2s.push(new THREE.Vector4(e2.x, e2.y, e2.z, 0));
+    });
+    this.dcE1 = uniformArray(e1s, 'vec4');
+    this.dcE2 = uniformArray(e2s, 'vec4');
+    const lv = ll(LAST_LIGHT[0], LAST_LIGHT[1]);
+    (this.u.lastLightDir.value as THREE.Vector3).set(lv[0], lv[1], lv[2]);
     this.plateU = uniformArray(Array.from({ length: NPLATES }, () => new THREE.Vector4(0, 0, 0, 1)), 'vec4');
     this.lightsTex.magFilter = THREE.LinearFilter;
     this.lightsTex.minFilter = THREE.LinearFilter;
@@ -390,8 +419,73 @@ export class PlanetStage extends Stage {
       // people cluster along coasts and rivers: weight by proximity to the sea and a clustering field
       const coastal = sst(0.55, 0.0, cont).mul(0.75).add(0.25);
       const cluster = sst(0.35, 0.85, vnoise(n.mul(22.0), 'g').mul(0.5).add(0.5));
-      const city = dens.mul(speck).mul(mix(float(1.0), coastal.mul(cluster).mul(2.2), u.speckle));
-      const emis = glowLava.mul(night.mul(0.85).add(0.15)).add(city.mul(night).mul(u.nightBoost).mul(float(1.0).sub(cloud.mul(0.6))));
+      // city cores glow continuously; the countryside around them breaks into points
+      const core = sst(0.25, 1.2, dens.g);
+      const city0 = dens.mul(mix(float(1.0), mix(speck, float(0.55).add(speck.mul(0.6)), core), u.speckle)).mul(mix(float(1.0), coastal.mul(cluster).mul(1.6).add(0.35), u.speckle));
+      // ---- the lattice: a cold, coherent crystal spreading from the datacenters ----
+      const dcs = this.dcU;
+      // only evaluated once the lattice exists (uniform branch: the other eras pay nothing)
+      const latticeEm = vec3(0.0).toVar();
+      const covered = float(0.0).toVar();
+      T.If(u.lattice.greaterThan(0.0001), () => {
+        // nearest and second-nearest seed, and the nearest seed's grain frame
+        const d1 = float(9.0).toVar();
+        const d2 = float(9.0).toVar();
+        const c1 = vec3(0, 0, 1).toVar();
+        const g1 = vec3(1, 0, 0).toVar();
+        const g2 = vec3(0, 1, 0).toVar();
+        for (let i = 0; i < DATACENTERS.length; i++) {
+          const ci = dcs.element(i).xyz;
+          const di = T.acos(clamp(dot(n, ci), -1.0, 1.0));
+          const closer = di.lessThan(d1);
+          d2.assign(select(closer, d1, min(d2, di)));
+          c1.assign(select(closer, ci, c1));
+          g1.assign(select(closer, this.dcE1.element(i).xyz, g1));
+          g2.assign(select(closer, this.dcE2.element(i).xyz, g2));
+          d1.assign(min(d1, di));
+        }
+        const front = u.lattice.mul(3.3);
+        // the growth front is faceted, like any crystal growing into a melt
+        const facet = mx_worley_noise_float(n.mul(9.0)).mul(0.07);
+        const dLast = T.acos(clamp(dot(n, u.lastLightDir), -1.0, 1.0));
+        covered.assign(sst(front.add(facet), front.add(facet).sub(0.025), d1).mul(sst(u.latticeHole, u.latticeHole.add(0.02), dLast)).mul(sst(0.0, 0.02, u.lattice)));
+        // azimuthal-equidistant coordinates in the grain's own lattice frame
+        const tdir = normalize(n.sub(c1.mul(dot(n, c1))).add(g1.mul(1e-5)));
+        const g = vec2(dot(tdir, g1), dot(tdir, g2)).mul(d1);
+        // a regular triangular lattice at three nested scales (anti-aliased; fine levels fade to an even glow)
+        const tri = (q2: N, cell: number): N[] => {
+          const a = q2.x.div(cell);
+          const b = q2.x.mul(0.5).add(q2.y.mul(0.8660254)).div(cell);
+          const c = q2.x.mul(-0.5).add(q2.y.mul(0.8660254)).div(cell);
+          const wa = T.fwidth(a).max(1e-4), wb = T.fwidth(b).max(1e-4), wc = T.fwidth(c).max(1e-4);
+          const la = sst(wa.add(0.018), 0.0, abs(fract(a.add(0.5)).sub(0.5)));
+          const lb = sst(wb.add(0.018), 0.0, abs(fract(b.add(0.5)).sub(0.5)));
+          const lc = sst(wc.add(0.018), 0.0, abs(fract(c.add(0.5)).sub(0.5)));
+          const w = max(wa, max(wb, wc));
+          const vis = sst(0.5, 0.12, w);
+          const lines = max(la, max(lb, lc));
+          const nodes = la.mul(lb).mul(lc);
+          return [lines.mul(vis).add(float(0.07).mul(float(1.0).sub(vis))), nodes.mul(vis), vis];
+        };
+        const [l1, n1] = tri(g, 0.08);
+        const [l2, n2] = tri(g, 0.02);
+        const [l3] = tri(g, 0.005);
+        // grain boundaries, where two seeds' crystals meet
+        const seam = sst(0.012, 0.0, d2.sub(d1));
+        // signals ripple outward from each seed along the lattice
+        const pulse = sin(d1.mul(42.0).sub(u.time.mul(4.0))).mul(0.5).add(0.5).pow(8.0);
+        const age = sst(0.0, 0.25, front.sub(d1));
+        const lat = l1.mul(0.55).add(l2.mul(0.3)).add(l3.mul(0.16)).add(n1.mul(2.0)).add(n2.mul(0.6));
+        const frontGlow = exp(abs(d1.sub(front.add(facet))).mul(-260.0)).mul(sst(0.0, 0.05, u.lattice)).mul(sst(0.42, 0.37, u.lattice));
+        const seedCore = exp(d1.mul(-40.0)).mul(0.5);
+        // denser over the continents it was built on, a fainter mesh across the sea
+        const where = land.mul(0.7).add(0.3);
+        latticeEm.assign(vec3(0.5, 0.72, 1.0).mul(covered.mul(lat.mul(pulse.mul(1.6).add(age.mul(-0.12).add(0.3))).mul(where).add(seam.mul(0.35)).add(seedCore))).mul(0.5).add(vec3(0.8, 0.9, 1.0).mul(frontGlow.mul(0.7))));
+        void n2;
+      });
+      // human lights die where the lattice has passed
+      const city = city0.mul(float(1.0).sub(covered.mul(0.97)));
+      const emis = glowLava.mul(night.mul(0.85).add(0.15)).add(city.mul(night).mul(u.nightBoost).mul(float(1.0).sub(cloud.mul(0.6)))).add(latticeEm.mul(night.mul(0.9).add(0.1)).mul(1.2));
       // impact winter: soot veil
       col = mix(col, vec3(0.05, 0.045, 0.04).mul(diff), u.impactWinter.mul(0.85));
       col = mix(col, vec3(0.02, 0.016, 0.014).mul(diff), albedoScorch.mul(0.85));
@@ -641,6 +735,10 @@ export class PlanetStage extends Stage {
     u.agriculture.value = w.agriculture;
     u.smog.value = w.smog;
     u.relief.value = smoothstep(-60e6, -30e6, f.T);
+    u.lattice.value = w.lattice;
+    u.datacenters.value = w.datacenters;
+    // the lattice closes in on the last human light
+    u.latticeHole.value = f.T < LAST_LIGHT_T ? 0.06 * Math.max(0, Math.min(1, (LAST_LIGHT_T - f.T) / 1.2)) + 0.012 : 0;
     // clouds: thick under haze worlds, ordinary otherwise
     u.clouds.value = lerp(0.55, 0.42, w.ice);
     // the oxygenated atmosphere is thicker in blue scattering

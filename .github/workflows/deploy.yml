@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - name: Unit tests (time mapping, fate invariance, galaxy determinism, balance)
         run: npm test
+      - name: Galaxy balance (50 seeds)
+        run: npm run test:balance
       - name: Build
         run: npm run build
       - uses: actions/configure-pages@v5
