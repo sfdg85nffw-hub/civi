@@ -7,10 +7,12 @@ import { FreeCamera } from '../director/FreeCamera';
 import { CHAPTERS, chapterById, TAKEOVER_T } from '../chapters/meta';
 import { CHAPTER_DEFS, STAGE_FACTORIES } from '../chapters/registry';
 import type { Stage } from '../render/stages/Stage';
+import { PlanetStage, preloadPlanetAssets } from '../render/stages/PlanetStage';
 import type { FrameContext } from './frame';
 import { worldAt } from '../fate/world';
 import { AudioEngine, type AudioFrame } from '../audio/AudioEngine';
 import { Recorder } from '../record/Recorder';
+import { SimHost } from '../sim/SimHost';
 import { StartScreen } from '../ui/StartScreen';
 import { HUD } from '../ui/HUD';
 import { Card } from '../ui/Card';
@@ -80,6 +82,7 @@ export class App {
   director!: Director;
   audio: AudioEngine | null = null;
   readonly recorder = new Recorder();
+  readonly sims = new SimHost();
   private stages = new Map<string, Stage>();
   private ui!: HTMLElement;
   private hud!: HUD;
@@ -145,6 +148,7 @@ export class App {
     const tier = this.link.quality ?? (prefs.quality !== 'auto' ? prefs.quality : this.renderer.detectTier());
     this.renderer.setQuality(tier);
     this.renderer.onDeviceLost = () => this.handleDeviceLost();
+    PlanetStage.renderer = this.renderer.renderer;
     this.rebuildPost();
     this.director = new Director(CHAPTER_DEFS, this.time.odyssey);
     this.free = new FreeCamera(canvas);
@@ -161,6 +165,11 @@ export class App {
     this.installKeys();
     this.exposeAPI();
 
+    try {
+      await preloadPlanetAssets();
+    } catch (e) {
+      console.error('Failed to load planet assets', e);
+    }
     // pre-warm the Prologue
     try {
       this.getStage('vent');
@@ -385,6 +394,15 @@ export class App {
       if (s - span.s0 > delay && s - span.s0 < delay + 2) this.showCard(chapter);
     }
 
+    // local-rule agents for this chapter (worker)
+    const chDef = CHAPTER_DEFS[chapter];
+    if (chDef?.sim) {
+      this.sims.maxAgents = this.renderer.quality.tier === 'low' ? 1200 : this.renderer.quality.tier === 'medium' ? 1900 : 2600;
+      this.sims.update(chDef.sim.id, chDef.sim.fate, this.seed, T, dt, this.lodMix, this.time.speed);
+    } else this.sims.idle();
+    if (this.sims.latest) this.hints.biomass = this.sims.latest.snap.stats.biomass ?? 0.3;
+    if (this.sims.latest) this.hints.photo = this.sims.latest.snap.stats.photo ?? 0.3;
+
     const f: FrameContext = {
       T,
       speed: this.time.speed,
@@ -401,6 +419,7 @@ export class App {
       spark: this.spark,
       seed: this.seed,
       freshStage: false,
+      agents: this.sims.latest,
     };
 
     const out = this.director.update(f);
@@ -456,6 +475,7 @@ export class App {
   private renderLayers(f: FrameContext, out: DirectorOut): void {
     const fx = this.postfx;
     const aspect = this.renderer.aspect;
+    const posts: { a: Stage['post'] | null; b: Stage['post'] | null } = { a: null, b: null };
     const setLayer = (layer: DirectorOut['a'], which: 'A' | 'B'): void => {
       if (!layer) {
         if (which === 'A') fx.setA(null, null);
@@ -474,11 +494,31 @@ export class App {
       st.lastFrame = this.frameNo;
       st.applyPose(layer.pose, aspect);
       st.update({ ...f, freshStage: fresh }, layer.shot);
-      if (which === 'A') fx.setA(st.scene, st.camera);
-      else fx.setB(st.scene, st.camera);
+      if (which === 'A') {
+        fx.setA(st.scene, st.camera);
+        posts.a = st.post;
+      } else {
+        fx.setB(st.scene, st.camera);
+        posts.b = st.post;
+      }
     };
+
     setLayer(out.a, 'A');
     setLayer(out.b, 'B');
+    {
+      const m = out.b ? out.mix : 0;
+      const a = posts.a ?? posts.b;
+      const b = posts.b ?? posts.a;
+      if (a && b) {
+        const l = (x: number, y: number): number => x + (y - x) * m;
+        fx.uBloomStrength.value = l(a.bloom, b.bloom);
+        fx.uBloomThreshold.value = l(a.threshold, b.threshold);
+        fx.uGrain.value = l(a.grain, b.grain);
+        fx.uVignette.value = l(a.vignette, b.vignette);
+        fx.uExposure.value = a.exposure;
+        fx.uExposureB.value = b.exposure;
+      }
+    }
     fx.uMix.value = out.b ? out.mix : 0;
     fx.uMixMode.value = out.mixMode;
     fx.uFade.value = out.fade * (this.stageFade ?? 1);

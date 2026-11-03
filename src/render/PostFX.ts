@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { T, type N } from './tsl/T';
 const {
   pass, uniform, Fn, vec2, vec3, vec4, float, uv, mix, smoothstep, length, dot, renderOutput, max, min,
-  fract, sin, clamp, Loop, int, convertToTexture,
+  fract, sin, clamp, Loop, int, convertToTexture, select,
 } = T;
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
@@ -39,6 +39,7 @@ export class PostFX {
   readonly uSaturation: N = uniform(1);
   readonly uLift: N = uniform(0);
   readonly uTint: N = uniform(new THREE.Color(1, 1, 1));
+  readonly uBloomThreshold: N = uniform(0);
   readonly uFocus: N = uniform(5);
   readonly uFocalLength: N = uniform(2);
   readonly uBokeh: N = uniform(0);
@@ -90,13 +91,20 @@ export class PostFX {
 
     const composite = Fn(() => {
       const p = uv();
-      const a = sampleBlur(texA, p).mul(this.uExposure);
-      const b = texB.sample(p).rgb.mul(this.uExposureB);
-      // mix modes: dissolve | radial iris | dive (B zooms in from centre)
+      const isDive = uMixMode.greaterThan(1.5);
+      // dive: A magnifies toward the centre while B opens from a small iris
+      const zA = mix(float(1.0), float(1.0).sub(uMix.mul(0.55)), select(isDive, float(1.0), float(0.0)));
+      const pA = p.sub(0.5).mul(zA).add(0.5);
+      const zB = select(isDive, float(1.0).div(uMix.mul(0.75).add(0.25)), float(1.0));
+      const pB = p.sub(0.5).mul(zB).add(0.5);
+      const a = sampleBlur(texA, pA).mul(this.uExposure);
+      const b = texB.sample(pB).rgb.mul(this.uExposureB);
       const d = p.sub(0.5).mul(vec2(uAspect, 1.0));
       const r = length(d);
       const radialW = smoothstep(uMix.mul(1.3).sub(0.25), uMix.mul(1.3), r).oneMinus();
-      const w = mix(uMix, mix(radialW, uMix, 0.35), min(uMixMode, 1.0));
+      const iris = smoothstep(uMix.mul(1.25).sub(0.12), uMix.mul(1.25).add(0.02), r).oneMinus().mul(smoothstep(0.0, 0.25, uMix));
+      const wMatch = mix(radialW, uMix, 0.35);
+      const w = select(isDive, mix(iris, uMix, 0.25), select(uMixMode.greaterThan(0.5), wMatch, uMix));
       return mix(a, b, clamp(w, 0.0, 1.0));
     })();
 
@@ -109,6 +117,7 @@ export class PostFX {
     })();
     this.bloomNode = bloom(bloomInput, 0.6, 0.55, 0.0);
     this.bloomNode.strength = this.uBloomStrength;
+    this.bloomNode.threshold = this.uBloomThreshold;
 
     const hdr = Fn(() => {
       const c = composite.add(this.bloomNode.rgb).toVar();
