@@ -102,6 +102,7 @@ export class PlanetStage extends Stage {
     nightBoost: uniform(1),
     sunLocal: uniform(new THREE.Vector3(1, 0, 0)),
     speckle: uniform(1),
+    moonlight: uniform(0.035),
     speckleLo: uniform(0.72),
     stars: uniform(0.2),
     limb: uniform(1.6),
@@ -401,6 +402,8 @@ export class PlanetStage extends Stage {
       const t0 = max(ta.x, 0.0);
       const t1 = length(positionWorld.sub(cameraPosition));
       const at = scatter(ro, rd, t0, t1, atmoU, 10, 4);
+      // faint moonlight so continents remain legible on the night side
+      col = col.add(albedo.mul(vec3(0.5, 0.6, 0.85)).mul(sst(0.05, -0.25, ndl0)).mul(u.moonlight));
       const outC = col.mul(at.trans).add(at.inscatter).add(emis.mul(at.trans.mul(0.6).add(0.4)));
       return vec4(outC.mul(u.exposure), 1.0);
     })();
@@ -674,7 +677,8 @@ export class PlanetStage extends Stage {
       u.impactWinter.value = smoothstep(0.5, 0.95, after);
       this.lastImpactU = x;
     } else {
-      this.bolideU.on.value = 0;
+      if (f.chapter !== 6) this.bolideU.on.value = 0;
+      else this.bolideU.on.value = (this.bolideU.on.value as number) * 0.8;
       u.impactFlash.value = 0;
       u.crater.value = 0;
       u.curtain.value = 0;

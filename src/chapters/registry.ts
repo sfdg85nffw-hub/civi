@@ -12,6 +12,8 @@ import { LandStage } from '../render/stages/LandStage';
 import { FireStage } from '../render/stages/FireStage';
 import { CaveStage } from '../render/stages/CaveStage';
 import { hominins } from './c04_hominins';
+import { ancient } from './c05_ancient';
+import { modern } from './c06_modern';
 import { animals } from './c03_animals';
 import './overlays';
 import { multicellular } from './c02_multicellular';
@@ -31,4 +33,4 @@ export const STAGE_FACTORIES: Record<string, () => Stage> = {
 const empty = (i: number): ChapterDef => ({ meta: CHAPTERS[i]!, shots: [] });
 
 /** Chapter definitions in order (render side). */
-export const CHAPTER_DEFS: ChapterDef[] = [prologue, microbial, multicellular, animals, hominins, empty(5), empty(6), empty(7), empty(8), empty(9), empty(10)];
+export const CHAPTER_DEFS: ChapterDef[] = [prologue, microbial, multicellular, animals, hominins, ancient, modern, empty(7), empty(8), empty(9), empty(10)];

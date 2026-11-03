@@ -1,8 +1,19 @@
 import { PlanetStage } from '../render/stages/PlanetStage';
 import { BAND_STRIDE } from '../sim/agents/bands';
+import { ANCIENT_CITIES, cityWeight } from '../data/history';
+import { TOWN_STRIDE } from '../sim/agents/polities';
+import { ThreadsLayer } from '../render/layers/Threads';
+import { PRESENT_YEAR } from '../time/format';
+import { MODERN_CITIES, FIBER_LINKS, SEA_LANES } from '../data/modern';
+import { CITY_STRIDE, canonicalLight } from '../sim/agents/cities';
+import type { Route } from '../data/history';
 
 /** Chapter 4: bands as firelight on the night side; the dispersal field as a faint glow at speed. */
 PlanetStage.overlays[4] = (stage, f) => {
+  stage.u.speckle.value = 1;
+  if (threads) threads.mesh.visible = false;
+  if (lanes) lanes.mesh.visible = false;
+  if (mesh) mesh.mesh.visible = false;
   const ag = f.agents;
   if (!ag || ag.sim !== 'bands') {
     stage.clearOverlays();
@@ -37,4 +48,193 @@ PlanetStage.overlays[4] = (stage, f) => {
     o.b = c[2]! * vis * 1.8;
     o.seed = (i * 0.618) % 1;
   });
+};
+
+// ---------------------------------------------------------------- Chapter 5
+
+let threads: ThreadsLayer | null = null;
+function ensureThreads(stage: PlanetStage): ThreadsLayer {
+  if (!threads) {
+    threads = new ThreadsLayer();
+    stage.overlay.add(threads.mesh);
+  }
+  return threads;
+}
+
+PlanetStage.overlays[5] = (stage, f) => {
+  const year = PRESENT_YEAR + f.T;
+  stage.u.speckle.value = 0;
+  const th = ensureThreads(stage);
+  th.mesh.visible = true;
+  if (lanes) lanes.mesh.visible = false;
+  if (mesh) mesh.mesh.visible = false;
+  th.u.year.value = year;
+  th.u.time.value = f.time;
+  th.u.vis.value = 1;
+  (th.u.sun.value as import('three/webgpu').Vector3).copy(stage.u.sun.value as import('three/webgpu').Vector3);
+  // the Black Death moves out from Kaffa (1346) along the threads
+  th.u.plague.value = year > 1346 && year < 1356 ? (year - 1346.3) * 26 : -1;
+  const ag = f.agents;
+  if (ag && ag.sim === 'polities') {
+    const fld = ag.snap.fields.polity;
+    if (fld) {
+      const d = fld.data;
+      stage.setEmissive(ag.version, fld.w, fld.h, (x0, y0) => {
+        const blur = (ch: number): number => {
+          let acc = 0;
+          for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+              const yy = Math.max(0, Math.min(fld.h - 1, y0 + dy)), xx = (x0 + dx + fld.w) % fld.w;
+              acc += d[(yy * fld.w + xx) * 4 + ch]!;
+            }
+          return acc / 9;
+        };
+        const x = x0, y = y0;
+        const i = (y * fld.w + x) * 4;
+        void blur;
+        const b = d[i + 3]! * (0.25 + f.lodMix * 0.4);
+        return [blur(0) * 0.018 + b * d[i]! * 0.1, blur(1) * 0.018 + b * d[i + 1]! * 0.1, blur(2) * 0.018 + b * d[i + 2]! * 0.1];
+      });
+    }
+  }
+  // cities: canonical lights, plus the agents' towns when time is slow
+  const civ = f.world.civLight;
+  const towns = ag && ag.sim === 'polities' && f.lodMix > 0.02 ? ag.snap : null;
+  const cities = ANCIENT_CITIES.filter((c) => cityWeight(c, year) > 0);
+  const nTowns = towns ? towns.count : 0;
+  const plagueFront = th.u.plague.value as number;
+  stage.setGlobeAgents(cities.length + nTowns, (i, o) => {
+    if (i < cities.length) {
+      const c = cities[i]!;
+      const w = cityWeight(c, year);
+      o.lat = c.lat;
+      o.lon = c.lon;
+      o.size = 0.004 + 0.006 * Math.sqrt(w);
+      let k = (2.0 + 6.0 * civ) * w;
+      if (plagueFront > 0) {
+        const D = Math.PI / 180;
+        const dd = Math.acos(Math.sin(c.lat * D) * Math.sin(45.03 * D) + Math.cos(c.lat * D) * Math.cos(45.03 * D) * Math.cos((c.lon - 35.38) * D)) / D;
+        if (dd < plagueFront && dd > plagueFront - 60) k *= 0.25;
+      }
+      o.r = 1.0 * k;
+      o.g = 0.62 * k;
+      o.b = 0.3 * k;
+      o.seed = (i * 0.37) % 1;
+    } else {
+      const s = towns!.agents;
+      const k0 = (i - cities.length) * TOWN_STRIDE;
+      o.lat = s[k0]!;
+      o.lon = s[k0 + 1]!;
+      o.size = 0.0025 + 0.004 * Math.sqrt(s[k0 + 2]!);
+      const k = s[k0 + 3]! * s[k0 + 4]! * f.lodMix * (2.0 + 6 * civ) * s[k0 + 2]!;
+      o.r = 1.0 * k;
+      o.g = 0.6 * k;
+      o.b = 0.28 * k;
+      o.seed = s[k0 + 5]! % 1;
+    }
+  });
+};
+
+// ---------------------------------------------------------------- Chapter 6
+
+let lanes: ThreadsLayer | null = null;
+let mesh: ThreadsLayer | null = null;
+/** per-city footprint on the 2° emissive grid */
+let footprints: { i: number; w: number }[][] | null = null;
+const EW = 180, EH = 90;
+const lightAcc = new Float32Array(EW * EH);
+function ensureModern(stage: PlanetStage): void {
+  if (!lanes) {
+    lanes = new ThreadsLayer(SEA_LANES.map((l, k) => ({ name: 'lane' + k, ...l })) as Route[], [0.75, 0.82, 0.95], 1.003, 0.3);
+    stage.overlay.add(lanes.mesh);
+    const byName = new Map(MODERN_CITIES.map((c) => [c[0], c] as const));
+    const links: Route[] = [];
+    for (const [a, b] of FIBER_LINKS) {
+      const A = byName.get(a), B = byName.get(b);
+      if (A && B) links.push({ name: a + '-' + b, from: 1988, to: 3000, weight: 0.8, pts: [[A[1], A[2]], [B[1], B[2]]] });
+    }
+    mesh = new ThreadsLayer(links, [0.45, 0.95, 1.0], 1.009, 0.9);
+    stage.overlay.add(mesh.mesh);
+  }
+  if (!footprints) {
+    footprints = MODERN_CITIES.map((c) => {
+      const out: { i: number; w: number }[] = [];
+      const rad = 1.5 + c[4] * 3;
+      for (let dy = -3; dy <= 3; dy++)
+        for (let dx = -3; dx <= 3; dx++) {
+          const lat = c[1] + dy * 2, lon = c[2] + dx * 2 / Math.max(0.3, Math.cos((c[1] * Math.PI) / 180));
+          const y = Math.floor((89 - lat) / 2 + 0.5), x = ((Math.floor((lon + 179) / 2 + 0.5) % EW) + EW) % EW;
+          if (y < 0 || y >= EH) continue;
+          const d = Math.hypot(dy * 2, dx * 2);
+          out.push({ i: y * EW + x, w: Math.exp(-((d / rad) ** 2)) });
+        }
+      return out;
+    });
+  }
+}
+
+PlanetStage.overlays[6] = (stage, f) => {
+  ensureModern(stage);
+  const year = PRESENT_YEAR + f.T;
+  stage.u.speckle.value = 1;
+  if (threads) threads.mesh.visible = false;
+  for (const L of [lanes!, mesh!]) {
+    L.mesh.visible = true;
+    L.u.year.value = year;
+    L.u.time.value = f.time;
+    (L.u.sun.value as import('three/webgpu').Vector3).copy(stage.u.sun.value as import('three/webgpu').Vector3);
+    L.u.plague.value = -1;
+  }
+  lanes!.u.vis.value = 1 - f.world.fiber * 0.6;
+  mesh!.u.vis.value = f.world.fiber * 1.6;
+  const ag = f.agents;
+  const snap = ag && ag.sim === 'cities' ? ag.snap : null;
+  // city lights → emissive grid (speckled into points by the planet shader)
+  lightAcc.fill(0);
+  MODERN_CITIES.forEach((c, i) => {
+    const L = snap ? snap.agents[i * CITY_STRIDE + 2]! : canonicalLight(year, c[3], c[4]);
+    for (const fp of footprints![i]!) lightAcc[fp.i]! += L * fp.w;
+  });
+  const elec = f.world.electric;
+  stage.setEmissive((ag?.version ?? 0) * 1000 + Math.floor(year * 4), EW, EH, (x, y) => {
+    const v = Math.min(2.5, lightAcc[y * EW + x]!) * 1.4;
+    // sodium orange early, whiter with LEDs late
+    return [v * 1.0, v * (0.55 + 0.25 * elec), v * (0.22 + 0.35 * elec)];
+  });
+  // agents: vehicles; and the two signal moments (Trinity, Apollo 11)
+  const nV = snap ? Math.max(0, snap.count - MODERN_CITIES.length) : 0;
+  const trinity = Math.max(0, 1 - Math.abs(year - 1945.54) * 12) * (f.reducedFlash ? 0.2 : 1);
+  stage.setGlobeAgents(nV + 1, (i, o) => {
+    if (i === nV) {
+      o.lat = 33.68;
+      o.lon = -106.48;
+      o.size = 0.004 + trinity * 0.05;
+      o.r = o.g = o.b = trinity * 12;
+      o.seed = 0;
+      return;
+    }
+    const k = (MODERN_CITIES.length + i) * CITY_STRIDE;
+    const s = snap!.agents;
+    o.lat = s[k]!;
+    o.lon = s[k + 1]!;
+    const plane = s[k + 3]! > 1.5;
+    o.size = plane ? 0.0018 : 0.0024;
+    const v = s[k + 2]! * f.lodMix * (plane ? 1.4 : 0.9);
+    o.r = (plane ? 1.0 : 0.75) * v;
+    o.g = (plane ? 0.95 : 0.82) * v;
+    o.b = (plane ? 0.9 : 0.95) * v;
+    o.seed = s[k + 4]!;
+  });
+  if (trinity > 0.5) f.cue('nuke');
+  // Apollo 11: a single bright mote leaves the atmosphere from Florida
+  const m = (year - 1969.535) * 40;
+  if (m > 0 && m < 1) {
+    f.cue('mote');
+    const D = Math.PI / 180;
+    const base = [Math.cos(28.6 * D) * Math.sin(-80.6 * D), Math.sin(28.6 * D), Math.cos(28.6 * D) * Math.cos(-80.6 * D)];
+    const up = 1.004 + m * m * 0.9;
+    stage.bolideU.pos.value.set(base[0]! * up + m * 0.25, base[1]! * up + m * 0.1, base[2]! * up);
+    stage.bolideU.vel.value.set(base[0]! + 0.3, base[1]! + 0.1, base[2]!);
+    stage.bolideU.on.value = Math.sin(Math.PI * Math.min(1, m * 1.2)) * 0.5;
+  }
 };
