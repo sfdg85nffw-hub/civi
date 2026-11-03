@@ -80,11 +80,12 @@ export class Director {
     // manual: map sim time to the film's shot for that moment
     const s = this.odyssey.s(f.T);
     const ch = this.chapters[f.chapter];
-    if (ch?.agentShot && f.lodMix > 0.5) {
+    const as = typeof ch?.agentShot === 'function' ? ch.agentShot(f.T) : ch?.agentShot;
+    if (as && f.lodMix > 0.5) {
       this.agentT += f.dt;
-      const d = ch.agentShot.dur;
+      const d = as.dur;
       const ph = (this.agentT / d) % 2;
-      return { def: ch.agentShot, t: (ph < 1 ? ph : 2 - ph) * d, dur: d };
+      return { def: as, t: (ph < 1 ? ph : 2 - ph) * d, dur: d };
     }
     this.agentT = 0;
     return this.pickByStory(s);

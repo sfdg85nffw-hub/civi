@@ -33,11 +33,22 @@ export const MICROBE_FATE = new FateField(
   [-3.8 * Gy, -3.5 * Gy, -2.7 * Gy, -2.4 * Gy, -2.29 * Gy, -2.06 * Gy, -1.6 * Gy],
 );
 
+export const COLONY_FATE = new FateField(
+  {
+    biomass: [[-1.6 * Gy, 0.62], [-1.0 * Gy, 0.6], [-0.72 * Gy, 0.25], [-0.64 * Gy, 0.25], [-0.6 * Gy, 0.6]],
+    photo: [[-1.6 * Gy, 0.8], [-0.6 * Gy, 0.75]],
+    colonial: [[-1.6 * Gy, 0.05], [-1.25 * Gy, 0.3], [-1.05 * Gy, 0.85], [-0.75 * Gy, 0.9]],
+  },
+  [-1.2 * Gy, -1.0 * Gy, -0.72 * Gy, -0.635 * Gy],
+);
+
 interface Genome {
   eff: number;
   motility: number;
   divThreshold: number;
   hue: number;
+  /** adhesion gene (Chapter 2): sticky cells bind into colonies */
+  adhesion: number;
 }
 
 export class MicrobeSim implements AgentSim {
@@ -60,6 +71,8 @@ export class MicrobeSim implements AgentSim {
   count = 0;
   private lod = 0;
   private agentsOn = false;
+  /** 0 = free-living mat, 1 = colonial era (set from the fate field) */
+  colonial = 0;
   private feed = 0.037;
   private kill = 0.06;
   private photoAdv = 1.0;
@@ -263,6 +276,7 @@ export class MicrobeSim implements AgentSim {
       motility: spec === 1 ? r.range(0.05, 0.35) : r.range(0.3, 1.0),
       divThreshold: r.range(1.6, 2.4),
       hue: spec === 1 ? r.range(0.42, 0.52) : spec === 2 ? r.range(0.75, 0.85) : r.range(0.05, 0.12),
+      adhesion: r.next() < this.colonial ? r.range(0.5, 1.0) : r.range(0.0, 0.3),
     };
   }
 
@@ -361,7 +375,7 @@ export class MicrobeSim implements AgentSim {
       if (spec === 1) this.R[ci] = Math.min(1, this.R[ci]! + 0.02 * dt);
       // run and tumble: keep going while food improves, tumble otherwise
       const ang = c[o + ANG]!;
-      const sp = g.motility * (spec === 1 ? 0.006 : 0.012);
+      const sp = g.motility * (spec === 1 ? 0.006 : 0.012) * (g.adhesion > 0.45 ? 0.25 : 1);
       const ahead = this.sample(U, x + Math.cos(ang) * 0.02, y + Math.sin(ang) * 0.02);
       if (ahead < u && rng.next() < dt * 2.5) c[o + ANG] = ang + rng.normal(0, 1.4);
       else c[o + ANG] = ang + rng.normal(0, 0.25) * dt;
@@ -390,6 +404,12 @@ export class MicrobeSim implements AgentSim {
               const push = (rr - d) * 0.35;
               nx += (dx / d) * push;
               ny += (dy / d) * push;
+            } else if (g.adhesion > 0.45 && this.genomes[q]!.adhesion > 0.45 && d2 < rr * rr * 2.6 && d2 > 1e-12) {
+              // adhesion: sticky neighbours bind at contact distance
+              const d = Math.sqrt(d2);
+              const pull = (d - rr) * 0.18 * Math.min(g.adhesion, this.genomes[q]!.adhesion);
+              nx -= (dx / d) * pull;
+              ny -= (dy / d) * pull;
             }
           }
         }
@@ -430,6 +450,7 @@ export class MicrobeSim implements AgentSim {
       motility: Math.max(0.02, Math.min(1.2, g.motility + rng.normal(0, 0.04))),
       divThreshold: Math.max(1.2, Math.min(3, g.divThreshold + rng.normal(0, 0.05))),
       hue: spec === c[o + SPEC] ? g.hue + rng.normal(0, 0.006) : this.randomGenome(spec).hue,
+      adhesion: Math.max(0, Math.min(1, g.adhesion + rng.normal(0, 0.05) + (rng.next() < this.colonial * 0.02 ? 0.4 : 0))),
     };
     this.addCell((x + Math.cos(ang) * r * 0.9 + 1) % 1, (y + Math.sin(ang) * r * 0.9 + 1) % 1, spec, child, e, 0.85);
     const oc = (this.count - 1) * MICROBE_STRIDE;
@@ -514,6 +535,7 @@ export class MicrobeSim implements AgentSim {
 
   step(dt: number, T: number, fate: FateInput): void {
     this.t += dt;
+    this.colonial = fate.targets.colonial ?? 0;
     // milestone crossings: project the residual away
     const ms = MICROBE_FATE.milestones;
     let mi = this.lastMilestone;

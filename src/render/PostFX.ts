@@ -2,10 +2,9 @@ import * as THREE from 'three/webgpu';
 import { T, type N } from './tsl/T';
 const {
   pass, uniform, Fn, vec2, vec3, vec4, float, uv, mix, smoothstep, length, dot, renderOutput, max, min,
-  fract, sin, clamp, Loop, int, convertToTexture, select,
+  fract, sin, clamp, Loop, int, convertToTexture, select, abs,
 } = T;
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
-import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
 import type { QualitySettings } from './Renderer';
 
 /**
@@ -52,7 +51,10 @@ export class PostFX {
     this.passA = pass(this.emptyScene, this.emptyCamera);
     this.passB = pass(this.emptyScene, this.emptyCamera);
     const rawA = this.passA.getTextureNode('output');
-    const texA = quality.dof ? convertToTexture(dof(rawA, this.passA.getViewZNode(), this.uFocus, this.uFocalLength, this.uBokeh)) : rawA;
+    const texA = rawA;
+    const depthA = this.passA.getTextureNode('depth');
+    const passANode = this.passA;
+    const useDof = quality.dof;
     const texB = this.passB.getTextureNode('output');
 
     const uMix = this.uMix;
@@ -76,8 +78,33 @@ export class PostFX {
       return vec3(r, g, b);
     };
 
+    // lean gather depth of field: 12 golden-angle taps, each weighted by its own circle of confusion
+    const golden = Array.from({ length: 12 }, (_, i) => {
+      const r = Math.sqrt((i + 0.5) / 12);
+      const th = i * 2.39996323;
+      return [r * Math.cos(th), r * Math.sin(th)] as const;
+    });
+    const cocAt = (p: N): N => {
+      const z = T.perspectiveDepthToViewZ(depthA.sample(p).r, passANode._cameraNear, passANode._cameraFar);
+      return clamp(abs(z.negate().sub(this.uFocus)).div(max(this.uFocalLength, 0.001)), 0.0, 1.0).mul(this.uBokeh);
+    };
+    const sampleDof = (tex: N, p: N): N => {
+      if (!useDof) return sampleCA(tex, p);
+      const c0 = cocAt(p);
+      const rad = c0.mul(vec2(0.009, 0.016));
+      const acc = sampleCA(tex, p).mul(0.6).toVar();
+      const wsum = float(0.6).toVar();
+      for (const [gx, gy] of golden) {
+        const q = p.add(vec2(gx, gy).mul(rad));
+        const w = cocAt(q).max(0.15);
+        acc.addAssign(tex.sample(q).rgb.mul(w));
+        wsum.addAssign(w);
+      }
+      return T.select(c0.greaterThan(0.02), acc.div(wsum), sampleCA(tex, p));
+    };
+
     const sampleBlur = (tex: N, p: N): N => {
-      if (!motionBlur) return sampleCA(tex, p);
+      if (!motionBlur) return sampleDof(tex, p);
       const acc = vec3(0).toVar();
       const blurLen = length(uBlurDir);
       // 8 taps along the blur direction; collapses to 1 effective tap when still
@@ -85,7 +112,7 @@ export class PostFX {
         const t = float(i).div(7.0).sub(0.5);
         acc.addAssign(sampleCA(tex, p.add(uBlurDir.mul(t))));
       });
-      const still = sampleCA(tex, p);
+      const still = sampleDof(tex, p);
       return mix(still, acc.div(8.0), smoothstep(0.0005, 0.003, blurLen));
     };
 
@@ -144,7 +171,9 @@ export class PostFX {
       const n = fract(sin(dot(seed, vec2(12.9898, 78.233))).mul(43758.5453)).sub(0.5);
       const n2 = fract(sin(dot(seed.add(17.0), vec2(39.3468, 11.135))).mul(24634.6345)).sub(0.5);
       const lum = dot(c, vec3(0.299, 0.587, 0.114));
-      const grainAmt = this.uGrain.mul(mix(float(0.55), float(1.0), smoothstep(0.0, 0.35, lum)).mul(float(1.0).sub(lum.mul(0.6))));
+      const grainAmt = this.uGrain.mul(mix(float(0.1), float(1.0), smoothstep(0.0, 0.08, lum)).mul(float(1.0).sub(lum.mul(0.6))));
+      // pin the black point so night sides and space stay black
+      c.assign(max(c.sub(0.0035), vec3(0.0)).mul(1.0035));
       c.addAssign(vec3(n.add(n2).mul(grainAmt)));
       c.addAssign(vec3(this.uLift));
       c.mulAssign(this.uFade);

@@ -353,6 +353,7 @@ export class App {
     if (this.clock - last < 0.25) return;
     this.cueTimes.set(id, this.clock);
     this.audio?.cue(id, x);
+    if (id === 'impact' || id === 'nuke' || id === 'supernova') this.flashEnv = id === 'nuke' ? 0.6 : 1;
   }
 
   setHint(k: string, v: number): void {
@@ -405,9 +406,11 @@ export class App {
 
     // local-rule agents for this chapter (worker)
     const chDef = CHAPTER_DEFS[chapter];
-    if (chDef?.sim) {
-      this.sims.maxAgents = this.renderer.quality.tier === 'low' ? 1200 : this.renderer.quality.tier === 'medium' ? 1900 : 2600;
-      this.sims.update(chDef.sim.id, chDef.sim.fate, this.seed, T, dt, this.lodMix, this.time.speed);
+    const simSpec = typeof chDef?.sim === 'function' ? chDef.sim(T) : chDef?.sim;
+    if (simSpec) {
+      const tierMax = this.renderer.quality.tier === 'low' ? 1200 : this.renderer.quality.tier === 'medium' ? 1900 : 2600;
+      this.sims.maxAgents = simSpec.id === 'creatures' ? Math.round(tierMax / 17) : tierMax;
+      this.sims.update(simSpec.id, simSpec.fate, this.seed, T, dt, this.lodMix, this.time.speed);
     } else this.sims.idle();
     if (this.sims.latest) this.hints.biomass = this.sims.latest.snap.stats.biomass ?? 0.3;
     if (this.sims.latest) this.hints.photo = this.sims.latest.snap.stats.photo ?? 0.3;
@@ -536,6 +539,9 @@ export class App {
     fx.uMixMode.value = out.mixMode;
     fx.uFade.value = out.fade * (this.stageFade ?? 1);
     fx.uTime.value = f.time;
+    this.flashEnv *= Math.exp(-f.dt * 3.5);
+    fx.uFlash.value = this.reducedFlash ? Math.min(this.flashEnv, 0.18) * 0.5 : this.flashEnv * 3.0;
+    (fx.uFlashColor.value as THREE.Color).setRGB(1.0, 0.92, 0.8);
     fx.uAspect.value = aspect;
     fx.uBlurDir.value.set(out.blur[0], out.blur[1]);
     const pa = out.a?.pose;
@@ -543,12 +549,13 @@ export class App {
       const focus = pa.focus ?? 10;
       fx.uFocus.value = focus;
       fx.uFocalLength.value = Math.max(0.05, focus * 0.6);
-      fx.uBokeh.value = (pa.aperture ?? 0) * 2.5;
+      fx.uBokeh.value = Math.min(1, (pa.aperture ?? 0) * 1.0);
     }
     fx.render();
   }
 
   stageFade = 1;
+  private flashEnv = 0;
   /** capture mode: frames still allowed to advance time after ready */
   private runFrames = 0;
 

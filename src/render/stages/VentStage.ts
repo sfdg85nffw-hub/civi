@@ -488,7 +488,7 @@ export class VentStage extends Stage {
         attributes: { a: [one, 4] },
         renderOrder: 14,
         softness: 3.0,
-        build: (at) => ({ center: at.a.xyz, size: float(0.03), color: vec3(sc).mul(I.mul(0.006)) }),
+        build: (at) => ({ center: at.a.xyz, size: float(0.1), color: vec3(sc).mul(I.mul(0.0035)) }),
       }),
     );
     g.add(
@@ -546,7 +546,7 @@ export class VentStage extends Stage {
     const close = smoothstep(6.9, 9.1, pt);
     const kindle = smoothstep(9.05, 9.35, pt);
     const flare = Math.exp(-Math.pow((pt - 9.25) / 0.18, 2));
-    this.uSparkI.value = smoothstep(3.6, 6.5, pt) * 3 + kindle * 7 + flare * 9;
+    this.uSparkI.value = smoothstep(3.6, 6.5, pt) * 3 + kindle * 14 + flare * 10;
     this.uTheta.value = lerp(0.42, Math.PI, easeInOutCubic(close));
     this.uClosed.value = smoothstep(8.85, 9.2, pt);
     this.uMembraneA.value = smoothstep(6.0, 7.2, pt);

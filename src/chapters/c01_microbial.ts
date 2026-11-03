@@ -18,7 +18,7 @@ export const microbial: ChapterDef = {
       id: 'm-young', stage: 'planet', dur: 4.5, label: 'The young Earth (match cut)',
       transition: { type: 'match', dur: 1.2 },
       rig: push({ from: [0, 0, 7.66], to: [0.35, 0.12, 4.3], target: [-1.25, 0.2, 0], targetTo: [-0.3, 0.05, 0], fov: 30, fovTo: 30, ease: easeOutCubic }),
-      params: { lat: 12, lon: -40, spin: 14, sunAz: 105, sunEl: 8, moon: 1, su: 0.75 },
+      params: { lat: 12, lon: -40, spin: 14, sunAz: 128, sunEl: 18, moon: 1, su: 0.75, moonX: -4.6, moonY: 1.9, moonZ: -10.5 },
     },
     {
       id: 'm-mat', stage: 'micro', dur: 11, label: 'The mat', signature: true, params: { su: 0.45 },
@@ -28,14 +28,14 @@ export const microbial: ChapterDef = {
     {
       id: 'm-goe', stage: 'planet', dur: 6, label: 'The Great Oxidation (orbital time-lapse)', signature: true,
       transition: { type: 'dissolve', dur: 1.2 },
-      rig: orbit({ radius: 3.4, radiusTo: 3.15, elev: 0.16, elevTo: 0.1, az: -0.25, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.25, 0, 0] }),
-      params: { lat: 18, lon: 10, spin: 70, sunAz: 98, sunEl: 12, su: 0.85, stars: 0.12 },
+      rig: orbit({ radius: 4.3, radiusTo: 3.9, elev: 0.16, elevTo: 0.1, az: -0.25, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.45, 0, 0] }),
+      params: { lat: 18, lon: 10, spin: 70, sunAz: 132, sunEl: 20, su: 0.85, stars: 0.12 },
     },
     {
       id: 'm-snowball', stage: 'planet', dur: 3.5, label: 'Snowball', signature: true,
       transition: { type: 'blend', dur: 1.5 },
-      rig: orbit({ radius: 3.3, radiusTo: 3.6, elev: 0.25, elevTo: 0.32, az: 0.1, azTo: 0.3, fov: 34, ease: easeInOutSine, targetOffset: [-0.3, 0, 0] }),
-      params: { lat: 30, lon: 60, spin: 40, sunAz: 82, sunEl: 22, su: 0.5, stars: 0.1 },
+      rig: orbit({ radius: 5.0, radiusTo: 5.4, elev: 0.25, elevTo: 0.32, az: 0.1, azTo: 0.3, fov: 34, ease: easeInOutSine, targetOffset: [-0.55, 0, 0] }),
+      params: { lat: 30, lon: 60, spin: 40, sunAz: 122, sunEl: 22, su: 0.5, stars: 0.1 },
     },
   ],
 };

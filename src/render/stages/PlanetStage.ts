@@ -5,6 +5,7 @@ import type { ShotRuntime } from '../../director/types';
 import { T, type N } from '../tsl/T';
 import { ATMO_R, raySphere, scatter, type AtmoUniforms } from '../tsl/atmosphere';
 import { makeParticles } from '../particles';
+import { vnoise } from '../tsl/noiseTex';
 import { NPLATES, plateRotations, qInv, qRot, ll, type Quat } from '../../data/paleo';
 import { Rng } from '../../core/rng';
 import { clamp01, damp, DEG, lerp, smoothstep } from '../../core/math';
@@ -104,6 +105,11 @@ export class PlanetStage extends Stage {
     limb: uniform(1.6),
     exposure: uniform(1),
     impactWinter: uniform(0),
+    impactDir: uniform(new THREE.Vector3(0, 0, 1)),
+    impactFlash: uniform(0),
+    curtain: uniform(0),
+    ejecta: uniform(0),
+    crater: uniform(0),
     firestorm: uniform(0),
     relief: uniform(0),
   };
@@ -114,6 +120,7 @@ export class PlanetStage extends Stage {
   private stars!: THREE.Mesh;
   private atmo!: THREE.Mesh;
   private smoothed: Record<string, number> = {};
+  private lastImpactU = 0;
   params: PlanetParams = { lat: 10, lon: 20, spin: 8, sunAz: 55, sunEl: 12, moon: 0 };
 
   constructor() {
@@ -145,6 +152,7 @@ export class PlanetStage extends Stage {
     this.stars = this.buildStars();
     this.scene.add(this.stars);
     this.moon = this.buildMoon();
+    this.planet.add(this.buildBolide());
     this.scene.add(this.moon);
   }
 
@@ -198,6 +206,9 @@ export class PlanetStage extends Stage {
     // Siberian Traps location in paleo coordinates
     const tr = qRot(rots[3]!, ll(62, 98));
     (this.u.trapsDir.value as THREE.Vector3).set(tr[0], tr[1], tr[2]);
+    // Chicxulub, Yucatán, carried by the North American plate
+    const ic = qRot(rots[0]!, ll(21.3, -89.5));
+    (this.u.impactDir.value as THREE.Vector3).set(ic[0], ic[1], ic[2]);
     const prev = r.getRenderTarget();
     r.setRenderTarget(this.bakeRT);
     this.bakeQuad.render(r);
@@ -328,7 +339,7 @@ export class PlanetStage extends Stage {
       const sunCol = vec3(1.0, 0.97, 0.92).mul(1.55);
       const surf = albedo.mul(diff.mul(shadow)).mul(sunCol).add(albedo.mul(sky)).add(glint.mul(sunCol).mul(shadow));
       const cloudThick = sst(0.2, 0.8, cov);
-      const cloudLit = mix(vec3(0.62, 0.64, 0.68), vec3(0.95, 0.95, 0.96), cloudThick).mul(diff.mul(0.96).add(0.015)).mul(sunCol).mul(mix(float(1.0), float(0.55), u.smog));
+      const cloudLit = mix(vec3(0.62, 0.64, 0.68), vec3(0.95, 0.95, 0.96), cloudThick).mul(diff.mul(0.96).add(sst(-0.2, 0.15, ndl0).mul(0.015))).mul(sunCol).mul(mix(float(1.0), float(0.55), u.smog));
       let col = mix(surf, cloudLit, cloud);
       // ---- night side emissive ----
       const night = sst(0.12, -0.18, ndl);
@@ -337,7 +348,15 @@ export class PlanetStage extends Stage {
       const traps = sst(0.965, 0.995, trapsD).mul(u.traps).mul(sst(0.3, 0.9, mx_noise_float(n.mul(60.0)).mul(0.5).add(0.5)).add(0.25));
       const craterGlow = sst(0.06, 0.0, crat).mul(u.bombardment).mul(0.6);
       const fire = u.firestorm.mul(land).mul(sst(0.3, 0.9, mx_noise_float(n.mul(24.0).add(vec3(ct.mul(0.2), 0, 0))).mul(0.5).add(0.5)));
-      const glowLava = vec3(1.0, 0.24, 0.04).mul(lava.mul(0.7).add(traps.mul(4.0)).add(craterGlow).add(fire.mul(2.5)));
+      // ---- Chicxulub: crater, ejecta curtain, incandescent ejecta rain ----
+      const ang = T.acos(clamp(dot(n, u.impactDir), -1.0, 1.0));
+      const ring = exp(ang.sub(u.curtain).div(0.035).pow(2.0).negate()).mul(sst(0.0, 0.03, u.curtain)).mul(float(1.0).sub(sst(0.6, 1.2, u.curtain)));
+      const ringBreak = vnoise(n.mul(9.0).add(vec3(ct.mul(0.1), 0, 0)), 'b').mul(0.5).add(0.6);
+      const blanket = sst(u.curtain, u.curtain.mul(0.6), ang).mul(u.crater);
+      const craterG = exp(ang.div(0.025).negate()).mul(u.crater.mul(3.0).add(u.impactFlash.mul(30.0)));
+      const sparks = sst(0.82, 0.97, vnoise(n.mul(26.0).add(vec3(0, ct.mul(0.6), 0)), 'a').mul(0.5).add(0.5)).mul(u.ejecta).mul(sst(2.4, 0.2, ang));
+      const impactGlow = vec3(1.0, 0.45, 0.12).mul(ring.mul(ringBreak).mul(3.5).add(sparks.mul(2.5)).add(blanket.mul(0.6))).add(vec3(1.0, 0.85, 0.6).mul(craterG));
+      const glowLava = vec3(1.0, 0.24, 0.04).mul(lava.mul(0.7).add(traps.mul(4.0)).add(craterGlow).add(fire.mul(2.5))).add(impactGlow);
       const city = texture(lights, uvE).rgb;
       const emis = glowLava.mul(night.mul(0.85).add(0.15)).add(city.mul(night).mul(u.nightBoost).mul(float(1.0).sub(cloud.mul(0.6))));
       // impact winter: soot veil
@@ -410,6 +429,28 @@ export class PlanetStage extends Stage {
     });
   }
 
+  /** the bolide: a blinding mote with a plasma trail, falling toward the impact point */
+  readonly bolideU = { pos: uniform(new THREE.Vector3(3, 2, 2)), vel: uniform(new THREE.Vector3(-1, -1, -1)), on: uniform(0) };
+  private buildBolide(): THREE.Object3D {
+    const n = 40;
+    const a = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) a.set([i / (n - 1), 0, 0, 0], i * 4);
+    const B = this.bolideU;
+    return makeParticles({
+      count: n,
+      attributes: { a: [a, 4] },
+      renderOrder: 25,
+      softness: 2.5,
+      build: (at) => {
+        const k = at.a.x;
+        const p = B.pos.sub(normalize(B.vel).mul(k.mul(0.35)));
+        const head = sst(0.08, 0.0, k);
+        const col = mix(vec3(1.0, 0.45, 0.15), vec3(1.0, 0.95, 0.85), head).mul(float(1.0).sub(k).pow(2.0).mul(0.5).add(head.mul(6.0))).mul(B.on);
+        return { center: p, size: mix(float(0.03), float(0.012), k), color: col };
+      },
+    });
+  }
+
   private buildMoon(): THREE.Mesh {
     const mat = new THREE.MeshBasicNodeMaterial();
     const u = this.u;
@@ -449,6 +490,11 @@ export class PlanetStage extends Stage {
     const w = f.world;
     const dt = f.dt;
     // planet orientation: focus point faces +Z, with drift over the shot
+    if (p.focusImpact || p.focusTraps) {
+      const d = (p.focusImpact ? u.impactDir.value : u.trapsDir.value) as THREE.Vector3;
+      P.lat = (Math.asin(Math.max(-1, Math.min(1, d.y))) * 180) / Math.PI + Number(p.dLat ?? 0);
+      P.lon = (Math.atan2(d.x, d.z) * 180) / Math.PI + Number(p.dLon ?? 0);
+    }
     const lon = P.lon + P.spin * (shot.u - 0.5);
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(P.lat * DEG, -lon * DEG, 0, 'XYZ'));
     this.planet.quaternion.copy(q);
@@ -488,7 +534,37 @@ export class PlanetStage extends Stage {
       // closer (and larger) in deep time
       const k = lerp(0.7, 1.0, smoothstep(-4e9, -1e9, f.T));
       this.moon.position.set(Number(p.moonX ?? -3.4) / k, Number(p.moonY ?? 1.5) / k, Number(p.moonZ ?? -9) / k);
-      this.moon.scale.setScalar(1.25);
+      this.moon.scale.setScalar(4.2);
+    }
+    // ---- Chicxulub sequence (shot-driven) ----
+    if (p.impact) {
+      const x = shot.u;
+      const ic = u.impactDir.value as THREE.Vector3;
+      const entry = smoothstep(0.0, 0.18, x);
+      const hitT = 0.18;
+      const ax = new THREE.Vector3(0.55, 0.65, 0.5).normalize();
+      const start = ic.clone().multiplyScalar(1.0).add(ax.clone().multiplyScalar(1.6));
+      const pos = start.clone().lerp(ic.clone().multiplyScalar(1.0), entry);
+      (this.bolideU.pos.value as THREE.Vector3).copy(pos);
+      (this.bolideU.vel.value as THREE.Vector3).copy(ic.clone().sub(start));
+      this.bolideU.on.value = x < hitT ? smoothstep(0.0, 0.05, x) : 0;
+      if (this.lastImpactU < hitT && x >= hitT) f.cue('impact');
+      const after = Math.max(0, x - hitT) / (1 - hitT);
+      u.impactFlash.value = x >= hitT ? Math.exp(-after * 22) * (f.reducedFlash ? 0.15 : 1) : 0;
+      u.crater.value = x >= hitT ? 1 - smoothstep(0.6, 1.0, after) * 0.5 : 0;
+      u.curtain.value = x >= hitT ? Math.pow(Math.min(1, after / 0.55), 0.6) * 1.15 : 0;
+      u.ejecta.value = x >= hitT ? smoothstep(0.02, 0.15, after) * (1 - smoothstep(0.45, 0.8, after)) : 0;
+      u.firestorm.value = smoothstep(0.25, 0.5, after) * (1 - smoothstep(0.8, 1.0, after) * 0.6);
+      u.impactWinter.value = smoothstep(0.5, 0.95, after);
+      this.lastImpactU = x;
+    } else {
+      this.bolideU.on.value = 0;
+      u.impactFlash.value = 0;
+      u.crater.value = 0;
+      u.curtain.value = 0;
+      u.ejecta.value = 0;
+      u.firestorm.value = 0;
+      u.impactWinter.value = smoothstep(-66.0001e6, -65.9995e6, f.T) * (1 - smoothstep(-65.99e6, -65.8e6, f.T));
     }
     // stars attached to camera position so they never parallax
     this.stars.position.copy(this.camera.position);

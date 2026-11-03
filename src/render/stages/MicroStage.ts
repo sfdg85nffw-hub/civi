@@ -98,7 +98,7 @@ export class MicroStage extends Stage {
       const density = sst(0.18, 1.1, bio);
       const procedural = lifeCol.mul(density.pow(1.4).mul(cellsTex.add(0.12))).mul(0.55).mul(u.fieldGain);
       // EPS film: a soft autofluorescent haze under the living cells
-      const eps = mix(vec3(0.9, 0.62, 0.2), vec3(0.2, 0.75, 0.6), hueMix).mul(sst(0.05, 1.6, bio)).mul(0.07).mul(float(1.0).sub(u.fieldGain).add(0.2)).mul(mx_noise_float(vec3(q.mul(30.0), u.time.mul(0.05))).mul(0.3).add(0.85));
+      const eps = mix(vec3(0.9, 0.62, 0.2), vec3(0.2, 0.75, 0.6), hueMix).mul(sst(0.05, 1.6, bio)).mul(0.028).mul(float(1.0).sub(u.fieldGain).add(0.2)).mul(mx_noise_float(vec3(q.mul(30.0), u.time.mul(0.05))).mul(0.3).add(0.85));
       const glow = procedural.add(eps);
       // substrate shimmer where nutrients are rich
       const nutr = vec3(0.12, 0.08, 0.05).mul(U.mul(U)).mul(0.12);
@@ -146,7 +146,7 @@ export class MicroStage extends Stage {
     const center = vec3(x.sub(0.5).mul(MAT_SIZE), 0.004, float(0.5).sub(y).mul(MAT_SIZE));
     const div = C.x;
     const r = B.x.mul(MAT_SIZE);
-    const rod = select(B.z.lessThan(0.5), float(0.0), select(B.z.lessThan(1.5), float(2.4).add(fract(C.w.mul(13.7)).mul(2.2)), float(0.7)));
+    const rod = select(B.z.lessThan(0.5), float(0.0), select(B.z.lessThan(1.5), float(6.0).add(fract(C.w.mul(13.7)).mul(9.0)), float(0.7)));
     const len = float(1.0).add(div.mul(1.1)).add(rod.mul(0.62));
     const corner = positionGeometry.xy;
     // oriented in the mat plane (x along heading)
@@ -202,7 +202,9 @@ export class MicroStage extends Stage {
       const sizeJ = fract(vSeed.mul(7.31)).mul(0.5).add(0.75);
       const body = tint.mul(inside.mul(0.022).add(nuc.mul(0.012)).add(gran.mul(0.16)));
       // dark-field: one crisp refractive boundary, a faint volumetric falloff inside
-      const edge = exp(d.div(0.085).pow(2.0).negate());
+      // oblique dark-field: the boundary is brighter on the side facing the light
+      const side = dot(normalize(vec2(select(abs(p.x).greaterThan(L), p.x.sub(L.mul(p.x.sign())), float(0.0)), p.y).add(vec2(1e-4, 0.0))), normalize(vec2(-0.6, 0.8))).mul(0.45).add(0.65);
+      const edge = exp(d.div(0.085).pow(2.0).negate()).mul(side);
       const vol = float(1.0).sub(nz).pow(3.0).mul(inside).mul(0.35);
       const rim = tint.mul(0.65).add(0.35).mul(edge.mul(1.25).add(vol).mul(sizeJ)).add(tint.mul(septa.mul(0.45)));
       const glintC = vec3(0.0);

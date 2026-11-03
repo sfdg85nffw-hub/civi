@@ -1,7 +1,11 @@
 import type { AgentSim } from './types';
 import { MicrobeSim } from './agents/microbes';
+import { CreatureSim } from './agents/creatures';
+import { EcosystemSim } from './agents/ecosystem';
 
 /** Agent simulations by id (constructed inside the worker, or in Node for tests). */
 export const SIM_FACTORIES: Record<string, () => AgentSim> = {
   microbes: () => new MicrobeSim(),
+  creatures: () => new CreatureSim(),
+  ecosystem: () => new EcosystemSim(),
 };

@@ -85,7 +85,7 @@ export function scatter(ro: N, rd: N, t0: N, t1: N, U: AtmoUniforms, steps: numb
   const phaseR = mu.mul(mu).add(1.0).mul(3.0 / (16.0 * Math.PI));
   const g = 0.76;
   const phaseM = float((3 * (1 - g * g)) / (8 * Math.PI * (2 + g * g))).mul(mu.mul(mu).add(1.0)).div(float(1 + g * g).sub(mu.mul(2 * g)).pow(1.5));
-  const gh = 0.55;
+  const gh = 0.7;
   const phaseH = float((1 - gh * gh) / (4 * Math.PI)).div(float(1 + gh * gh).sub(mu.mul(2 * gh)).pow(1.5)).add(0.03);
   const inscatter = sumR.mul(bR).mul(phaseR).add(sumM.mul(bM).mul(phaseM)).add(sumH.mul(bHs).mul(phaseH)).mul(U.sunI);
   const trans = exp(bR.mul(odR).add(vec3(bM.mul(1.1).mul(odM))).add(bHs.add(bHa).mul(odH)).negate());
