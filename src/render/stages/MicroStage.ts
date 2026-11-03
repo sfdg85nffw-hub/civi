@@ -42,7 +42,7 @@ export class MicroStage extends Stage {
   };
 
   build(): void {
-    this.post = { bloom: 0.5, threshold: 0.32, exposure: 1.0, grain: 0.04, vignette: 0.45 };
+    this.post = { bloom: 0.5, threshold: 0.32, exposure: 1.0, grain: 0.04, vignette: 0.45, chroma: 0.002 };
     this.camera.near = 0.01;
     this.camera.far = 50;
     this.scene.background = new THREE.Color(0, 0, 0);
@@ -96,7 +96,10 @@ export class MicroStage extends Stage {
       const hueMix = clamp(P.div(A.add(P).add(1e-3)), 0.0, 1.0);
       const lifeCol = mix(amber, cyan, hueMix);
       const density = sst(0.18, 1.1, bio);
-      const glow = lifeCol.mul(density.pow(1.4).mul(cellsTex.add(0.12))).mul(0.55).mul(u.fieldGain);
+      const procedural = lifeCol.mul(density.pow(1.4).mul(cellsTex.add(0.12))).mul(0.55).mul(u.fieldGain);
+      // EPS film: a soft autofluorescent haze under the living cells
+      const eps = mix(vec3(0.9, 0.62, 0.2), vec3(0.2, 0.75, 0.6), hueMix).mul(sst(0.02, 1.0, bio)).mul(0.11).mul(float(1.0).sub(u.fieldGain).add(0.25)).mul(mx_noise_float(vec3(q.mul(30.0), u.time.mul(0.05))).mul(0.3).add(0.85));
+      const glow = procedural.add(eps);
       // substrate shimmer where nutrients are rich
       const nutr = vec3(0.12, 0.08, 0.05).mul(U.mul(U)).mul(0.12);
       let col = base.mul(sun.mul(caust.mul(0.6).add(0.1))).add(glow.mul(caust.mul(0.25).add(0.85))).add(nutr.mul(0.3));
@@ -143,8 +146,8 @@ export class MicroStage extends Stage {
     const center = vec3(x.sub(0.5).mul(MAT_SIZE), 0.004, float(0.5).sub(y).mul(MAT_SIZE));
     const div = C.x;
     const r = B.x.mul(MAT_SIZE);
-    const rod = select(B.z.lessThan(0.5), float(0.0), select(B.z.lessThan(1.5), float(1.3), float(0.55)));
-    const len = float(1.0).add(div.mul(1.1)).add(rod.mul(0.5));
+    const rod = select(B.z.lessThan(0.5), float(0.0), select(B.z.lessThan(1.5), float(2.4).add(fract(C.w.mul(13.7)).mul(2.2)), float(0.7)));
+    const len = float(1.0).add(div.mul(1.1)).add(rod.mul(0.62));
     const corner = positionGeometry.xy;
     // oriented in the mat plane (x along heading)
     const ang = B.y;
@@ -193,9 +196,13 @@ export class MicroStage extends Stage {
       const shade = vHue.sub(0.08).mul(1.5);
       const tint = baseC.add(vec3(shade.mul(0.3), shade.mul(-0.1), shade.mul(-0.2))).clamp(0.0, 1.5);
       const starving = sst(0.6, 0.0, vEnergy);
-      const body = tint.mul(inside.mul(0.035).add(diff.mul(inside).mul(0.05)).add(nuc.mul(0.06)).add(gran.mul(0.35)));
-      const rim = tint.mul(0.7).add(0.3).mul(fres.mul(1.5));
-      const glintC = vec3(1.0, 0.97, 0.9).mul(spec.mul(0.9));
+      // septa: cross-walls along filaments
+      const segs = fract(p.x.add(L).div(1.7));
+      const septa = sst(0.07, 0.0, abs(segs.sub(0.5)).sub(0.43).abs()).mul(inside).mul(sst(0.5, 1.5, vRod));
+      const sizeJ = fract(vSeed.mul(7.31)).mul(0.5).add(0.75);
+      const body = tint.mul(inside.mul(0.022).add(nuc.mul(0.012)).add(gran.mul(0.16)));
+      const rim = tint.mul(0.7).add(0.3).mul(fres.mul(1.35).mul(sizeJ)).add(tint.mul(septa.mul(0.5)));
+      const glintC = vec3(0.0);
       const col = body.add(rim).add(glintC).mul(float(1.0).sub(starving.mul(0.65))).add(tint.mul(vFlash.mul(fres.add(inside.mul(0.15))).mul(0.9)));
       return vec4(col.mul(vVis), 1.0);
     })();

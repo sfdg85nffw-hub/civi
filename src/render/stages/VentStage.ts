@@ -7,32 +7,51 @@ import { makeParticles } from '../particles';
 import { Rng } from '../../core/rng';
 import { fbm3, noise1 } from '../../core/noise';
 import { clamp01, easeInOutCubic, lerp, smoothstep } from '../../core/math';
+import { buildVentGeometry, type MeshData, type VentGeometry } from '../spires';
 
 const {
-  uniform, vec2, vec3, vec4, float, color, mix, smoothstep: sstep, positionWorld, normalWorld, cameraPosition, normalize, dot,
-  mx_noise_float, mx_fractal_noise_float, sin, cos, fract, max, min, exp, abs, pow, uv, positionLocal, fog, densityFogFactor,
-  length, clamp, PI, attribute, varying, modelWorldMatrix, cameraProjectionMatrix, cameraViewMatrix,
+  uniform, vec2, vec3, vec4, float, mix, smoothstep: sstep, positionWorld, normalWorld, cameraPosition, normalize, dot,
+  mx_noise_float, mx_fractal_noise_float, sin, cos, fract, max, min, exp, abs, pow, uv, fog, densityFogFactor,
+  length, clamp, attribute, varying, modelWorldMatrix, cameraViewMatrix, atan, screenUV, viewportSharedTexture,
 } = T;
 
 /** Fixed seed: the vent must be bit-identical on every run (the Coda's Return depends on it). */
 const VENT_SEED = 0x0c0ffee;
 
-/** The protocell's position (a micro-vesicle drifting in the warm water in front of the main chimney). */
-export const PROTOCELL = new THREE.Vector3(1.55, 5.95, 1.25);
-const MOUTHS = [new THREE.Vector3(0, 5.25, 0), new THREE.Vector3(-3.6, 3.55, -2.6), new THREE.Vector3(3.1, 2.7, -3.4)];
+/** The protocell: a vesicle drifting in the warm water just above and in front of the hero orifice. */
+export const PROTOCELL = new THREE.Vector3(1.6, 7.1, 2.2);
+/** Orifices: [0] hero spire, [1..2] its secondary vents, [3..4] background spires (revealed later). */
+const MOUTHS: THREE.Vector3[] = [];
+const MOUTH_W = [1.0, 0.45, 0.35, 0.55, 0.45];
+
+type V3 = [number, number, number];
+const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const nrm = (a: V3): V3 => {
+  const l = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
 
 /**
  * The Prologue's single continuous camera move (shared with the Coda's Return,
  * so the frame is reproduced exactly). pt = prologue-local seconds [0, 10].
  */
 export function ventPath(pt: number): CamPose {
-  // keyframes: [time, position, target, fov, focus, aperture]
-  const K: [number, [number, number, number], [number, number, number], number, number, number][] = [
-    [0.0, [0.6, 3.4, 19.0], [0.1, 4.6, 0], 28, 19, 0.0],
-    [3.2, [0.7, 3.7, 15.6], [0.2, 4.75, 0], 28, 15.5, 0.0],
-    [6.4, [0.2, 5.3, 8.6], [1.0, 5.6, 0.7], 30, 7.6, 0.2],
-    [8.0, [1.12, 6.03, 1.92], [1.55, 5.95, 1.25], 30, 0.62, 0.9],
-    [10.0, [1.40, 5.985, 1.45], [1.55, 5.952, 1.25], 30, 0.26, 1.0],
+  const P: V3 = [PROTOCELL.x, PROTOCELL.y, PROTOCELL.z];
+  const M: V3 = [0, 5.2, 0];
+  // final macro framing: looking back along orifice→cell so the glow sits out of focus behind,
+  // with the cell on the left third
+  const d0 = nrm(sub(P, M));
+  const d = nrm([d0[0], d0[1] * 0.35, d0[2]]);
+  const right = nrm([d[2], 0, -d[0]]);
+  const camEnd: V3 = [P[0] + d[0] * 0.25 - right[0] * 0.07, P[1] + d[1] * 0.25 + 0.03, P[2] + d[2] * 0.25 - right[2] * 0.07];
+  const tgtEnd: V3 = [P[0] - right[0] * 0.038, P[1], P[2] - right[2] * 0.038];
+  const camMid: V3 = [P[0] + d[0] * 1.9 - right[0] * 0.2, P[1] + d[1] * 1.9 + 0.15, P[2] + d[2] * 1.9 - right[2] * 0.2];
+  const K: [number, V3, V3, number, number, number][] = [
+    [0.0, [3.1, 3.7, 18.5], [1.9, 5.0, 0], 28, 18.5, 0.0],
+    [3.2, [3.0, 4.0, 15.2], [1.75, 5.1, 0], 28, 15.2, 0.0],
+    [6.4, [2.8, 5.0, 9.4], [1.2, 5.45, 0.5], 30, 8.6, 0.15],
+    [8.0, camMid, [P[0] - right[0] * 0.3, P[1], P[2] - right[2] * 0.3], 30, 2.0, 0.7],
+    [10.0, camEnd, tgtEnd, 30, 0.25, 1.0],
   ];
   const t = Math.max(0, Math.min(10, pt));
   let i = 0;
@@ -40,288 +59,266 @@ export function ventPath(pt: number): CamPose {
   const a = K[i]!;
   const b = K[i + 1]!;
   const u = (t - a[0]) / (b[0] - a[0]);
-  // the dive (6.4→8.0) accelerates then settles; others ease
-  const e = i === 2 ? easeInOutCubic(u) : i === 3 ? 1 - Math.pow(1 - u, 2.2) : smoothstep(0, 1, u) * 0.6 + u * 0.4;
-  const v3 = (p: [number, number, number], q: [number, number, number]): THREE.Vector3 =>
-    new THREE.Vector3(lerp(p[0], q[0], e), lerp(p[1], q[1], e), lerp(p[2], q[2], e));
+  const e = i === 2 ? easeInOutCubic(u) : i === 3 ? 1 - Math.pow(1 - u, 2.4) : smoothstep(0, 1, u) * 0.6 + u * 0.4;
+  const v3 = (p: V3, q: V3): THREE.Vector3 => new THREE.Vector3(lerp(p[0], q[0], e), lerp(p[1], q[1], e), lerp(p[2], q[2], e));
   const pos = v3(a[1], b[1]);
   // a breath of drift (deterministic in pt so the Return is identical)
-  const amp = lerp(0.03, 0.004, smoothstep(6, 9, t));
+  const amp = lerp(0.035, 0.002, smoothstep(6, 9.5, t));
   pos.x += noise1(t * 0.31, 11) * amp;
   pos.y += noise1(t * 0.27, 12) * amp * 0.6;
+  // focus distance follows the subject exactly near the end
   return { pos, target: v3(a[2], b[2]), fov: lerp(a[3], b[3], e), focus: lerp(a[4], b[4], e), aperture: lerp(a[5], b[5], e) };
 }
 
-function chimneyGeometry(rng: Rng, height: number, radius: number): THREE.BufferGeometry {
-  // lathe profile from multi-octave 1D noise: knobbly, asymmetric accretions, open crater mouth
-  const pts: THREE.Vector2[] = [];
-  const n = 90;
-  const sd = rng.int(0, 1e6);
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const y = t * height;
-    let r = radius * (1.55 - 1.22 * Math.pow(t, 0.85));
-    r *= 1 + 0.22 * noise1(t * 6, sd) + 0.1 * noise1(t * 17, sd + 1) + 0.05 * noise1(t * 41, sd + 2);
-    pts.push(new THREE.Vector2(Math.max(0.04, r), y));
+function toGeometry(m: MeshData): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(m.positions, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(m.normals, 3));
+  g.setIndex(new THREE.BufferAttribute(m.indices, 1));
+  g.computeBoundingSphere();
+  return g;
+}
+
+let ventGeo: VentGeometry | null = null;
+/** Build the spire meshes in a worker while the start screen is up (falls back to the main thread). */
+export async function preloadVentGeometry(): Promise<void> {
+  if (ventGeo) return;
+  try {
+    const w = new Worker(new URL('../vent.worker.ts', import.meta.url), { type: 'module' });
+    ventGeo = await new Promise<VentGeometry>((res, rej) => {
+      w.onmessage = (e: MessageEvent<VentGeometry>) => res(e.data);
+      w.onerror = (e) => rej(new Error(e.message));
+      w.postMessage(0);
+    });
+    w.terminate();
+  } catch (e) {
+    console.warn('vent worker unavailable, building on the main thread', e);
+    ventGeo = buildVentGeometry();
   }
-  const top = height;
-  const rt = pts[pts.length - 1]!.x;
-  pts.push(new THREE.Vector2(rt * 1.05, top + 0.05));
-  pts.push(new THREE.Vector2(rt * 0.75, top + 0.07));
-  pts.push(new THREE.Vector2(rt * 0.55, top - 0.15));
-  pts.push(new THREE.Vector2(rt * 0.4, top - 0.8));
-  const geo = new THREE.LatheGeometry(pts, 140);
-  const pos = geo.getAttribute('position') as THREE.BufferAttribute;
-  const seed = rng.int(0, 1e6);
-  // lopsided accretions: a few lobes pushed out on one side
-  const lobes = Array.from({ length: 4 }, () => ({ y: rng.range(0.15, 0.85) * height, a: rng.range(0, Math.PI * 2), s: rng.range(0.25, 0.6) * radius }));
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const rr = Math.hypot(x, z);
-    if (rr < 1e-4) continue;
-    const ang = Math.atan2(z, x);
-    let d = fbm3(x * 0.9, y * 0.45, z * 0.9, 5, seed) * 0.55 * radius; // vertically streaked
-    d += fbm3(x * 4.5, y * 1.6, z * 4.5, 3, seed + 9) * 0.12 * radius;
-    for (const L of lobes) {
-      const da = Math.atan2(Math.sin(ang - L.a), Math.cos(ang - L.a));
-      d += L.s * Math.exp(-((y - L.y) ** 2) / (0.12 * height * height * 0.08)) * Math.exp(-(da * da) / 0.5);
-    }
-    const k = (rr + d) / rr;
-    pos.setXYZ(i, x * k, y + d * 0.1, z * k);
-  }
-  geo.computeVertexNormals();
-  return geo;
 }
 
 export class VentStage extends Stage {
   readonly name = 'vent';
-  /** prologue-local time (0–10 s) */
   readonly uPT: N = uniform(0);
   readonly uGlow: N = uniform(0);
   readonly uReveal: N = uniform(0);
+  readonly uBack: N = uniform(0);
   readonly uSpark: N = uniform(new THREE.Color(1, 1, 1));
   readonly uSparkI: N = uniform(0);
   readonly uTheta: N = uniform(0.35);
-  readonly uRadius: N = uniform(0.03);
+  readonly uRadius: N = uniform(0.034);
   readonly uMembraneA: N = uniform(0);
   readonly uClosed: N = uniform(0);
   readonly uFocus: N = uniform(14);
   readonly uAperture: N = uniform(0);
   readonly uHaze: N = uniform(0);
+  readonly uMouthI: N;
   private lights: THREE.PointLight[] = [];
-  private membrane!: THREE.Mesh;
-  /** externally set: when true the stage is driven by the Coda (Return) */
+  private mouthI: THREE.Vector4[] = [];
   pt = 0;
+
+  constructor() {
+    super();
+    this.mouthI = Array.from({ length: 5 }, () => new THREE.Vector4(0, 0, 0, 0));
+    this.uMouthI = T.uniformArray(this.mouthI, 'vec4');
+  }
 
   build(): void {
     const rng = new Rng(VENT_SEED, 1);
     const scene = this.scene;
     scene.background = new THREE.Color(0, 0, 0);
+    this.post = { bloom: 0.55, threshold: 0.0, exposure: 1.0, grain: 0.035, vignette: 0.45, chroma: 0.0012 };
     this.camera.near = 0.005;
-    this.camera.far = 80;
+    this.camera.far = 90;
+    MOUTHS.length = 0;
 
-    // Underwater haze: warm near the vents, black far away
-    const hazeCol = vec3(0.0016, 0.0007, 0.0003).mul(this.uGlow).add(vec3(0.0012, 0.0006, 0.0003).mul(this.uHaze));
-    scene.fogNode = fog(hazeCol, densityFogFactor(float(0.065).add(this.uHaze.mul(0.5))));
+    // ---- geometry: the hero cluster, background spires, a foreground silhouette, rubble, the mound ----
+    const rockMat = this.rockMaterial();
+    const geo = ventGeo ?? (ventGeo = buildVentGeometry());
+    for (const md of geo.meshes) {
+      const m = new THREE.Mesh(toGeometry(md), rockMat);
+      m.position.set(md.offset[0], md.offset[1], md.offset[2]);
+      scene.add(m);
+    }
+    scene.add(new THREE.Mesh(toGeometry(geo.floor), rockMat));
+    for (const mo of geo.mouths) MOUTHS.push(new THREE.Vector3(mo[0], mo[1], mo[2]));
+    void rng;
 
-    // ---- lights at the mouths (thermal glow) ----
-    for (let i = 0; i < MOUTHS.length; i++) {
-      const L = new THREE.PointLight(0xff6a22, 0, 16, 2);
-      L.position.copy(MOUTHS[i]!).add(new THREE.Vector3(0, 0.35, 0));
+    // ---- light: warm orifices, a cold rim from far above ----
+    for (let i = 0; i < 5; i++) {
+      const L = new THREE.PointLight(0xff5a1c, 0, 4.5, 2);
+      L.position.copy(MOUTHS[i]!).add(new THREE.Vector3(0, 0.22, 0));
       scene.add(L);
       this.lights.push(L);
     }
-    const fill = new THREE.PointLight(0x4a6a9a, 0, 40, 2);
-    fill.position.set(-2.5, 10, -9);
-    scene.add(fill);
-    this.lights.push(fill);
+    const rim = new THREE.PointLight(0x5070a8, 0, 60, 2);
+    rim.position.set(-3, 14, -14);
+    scene.add(rim);
+    this.lights.push(rim);
 
-    // ---- chimneys ----
-    const rockMat = this.rockMaterial();
-    const specs: [number, number, THREE.Vector3][] = [
-      [5.25, 0.62, new THREE.Vector3(0, 0, 0)],
-      [3.55, 0.48, new THREE.Vector3(-3.6, 0, -2.6)],
-      [2.7, 0.42, new THREE.Vector3(3.1, 0, -3.4)],
-    ];
-    for (const [h, r, p] of specs) {
-      const grp = new THREE.Group();
-      grp.position.copy(p);
-      grp.add(new THREE.Mesh(chimneyGeometry(rng, h, r), rockMat));
-      // candelabra: fused sub-spires and side vents on the flanks
-      const subs = rng.int(3, 5);
-      for (let k = 0; k < subs; k++) {
-        const sh = h * rng.range(0.35, 0.72);
-        const sr = r * rng.range(0.35, 0.6);
-        const m = new THREE.Mesh(chimneyGeometry(rng, sh, sr), rockMat);
-        const a = rng.range(0, Math.PI * 2);
-        const off = r * rng.range(0.85, 1.25);
-        m.position.set(Math.cos(a) * off, rng.range(-0.1, 0.25) * h, Math.sin(a) * off);
-        m.rotation.set(rng.range(-0.12, 0.12), rng.range(0, 6.28), rng.range(-0.18, 0.18));
-        grp.add(m);
-      }
-      scene.add(grp);
-    }
-    // small spires around the base
-    for (let i = 0; i < 9; i++) {
-      const h = rng.range(0.5, 1.6);
-      const m = new THREE.Mesh(chimneyGeometry(rng, h, rng.range(0.12, 0.25)), rockMat);
-      const a = rng.range(0, Math.PI * 2);
-      const d = rng.range(1.2, 5.5);
-      m.position.set(Math.cos(a) * d, -0.05, Math.sin(a) * d - 1.2);
-      scene.add(m);
-    }
+    // ---- cold blue-black water with warm pockets near the orifices ----
+    const warmPocket = this.warmField(positionWorld);
+    const cold = vec3(0.0006, 0.0011, 0.002).mul(this.uBack.mul(0.7).add(0.3));
+    scene.fogNode = fog(cold.add(vec3(0.0028, 0.0008, 0.0002).mul(warmPocket)).add(vec3(0.0009, 0.0005, 0.0003).mul(this.uHaze)), densityFogFactor(float(0.07).add(this.uHaze.mul(0.45))));
 
-    // ---- seafloor (sulfide mound) ----
-    const floorGeo = new THREE.PlaneGeometry(60, 60, 220, 220);
-    floorGeo.rotateX(-Math.PI / 2);
-    const fp = floorGeo.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < fp.count; i++) {
-      const x = fp.getX(i), z = fp.getZ(i);
-      const mound = 1.1 * Math.exp(-(x * x + (z + 1.5) * (z + 1.5)) / 22);
-      const y = mound + fbm3(x * 0.35, 0, z * 0.35, 5, 77) * 0.9 + fbm3(x * 2.2, 1, z * 2.2, 3, 78) * 0.12 - 0.35;
-      fp.setY(i, y);
-    }
-    floorGeo.computeVertexNormals();
-    const floor = new THREE.Mesh(floorGeo, rockMat);
-    scene.add(floor);
-
-    // ---- mouth glows (the throats) ----
+    scene.add(this.backdrop());
     scene.add(this.mouthGlows());
-    // ---- black smoke plumes ----
     scene.add(this.plumes(rng));
-    // ---- drifting particulates (with bokeh) ----
     scene.add(this.particulates(rng));
-    // ---- heat shimmer ----
     scene.add(this.shimmer());
-    // ---- micelles near the protocell ----
     scene.add(this.micelles(rng));
-    // ---- the protocell ----
-    this.membrane = this.buildMembrane();
-    scene.add(this.membrane);
+    scene.add(this.buildMembrane());
     scene.add(this.spark());
   }
 
+  /** warm light density near the orifices (for fog colour and particulates) */
+  private warmField(p: N): N {
+    let w: N = float(0);
+    for (let i = 0; i < 5; i++) {
+      const mi = this.uMouthI.element(i);
+      const d2 = dot(p.sub(mi.xyz), p.sub(mi.xyz));
+      w = w.add(mi.w.div(d2.mul(1.4).add(0.35)));
+    }
+    return w;
+  }
+
   private rockMaterial(): THREE.MeshStandardNodeMaterial {
-    const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.92, metalness: 0.0 });
+    const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0.0 });
     const p = positionWorld;
     const n1 = mx_fractal_noise_float(p.mul(1.7), 4, 2.0, 0.5);
     const n2 = mx_noise_float(p.mul(vec3(6.0, 2.5, 6.0)));
-    const basalt = vec3(0.028, 0.025, 0.023);
-    const sulfide = vec3(0.16, 0.1, 0.035); // pyrite/chalcopyrite sheen
-    const rust = vec3(0.09, 0.035, 0.015);
-    const carbonate = vec3(0.13, 0.125, 0.12);
-    let albedo = mix(basalt, rust, sstep(0.1, 0.5, n1).mul(0.6));
-    albedo = mix(albedo, sulfide, sstep(0.35, 0.65, n2).mul(0.5));
-    // carbonate frost on upward-facing ledges
-    const up = sstep(0.55, 0.9, normalWorld.y);
-    albedo = mix(albedo, carbonate, up.mul(sstep(0.0, 0.6, n1.add(0.2))).mul(0.55));
+    const basalt = vec3(0.022, 0.02, 0.019);
+    const sulfide = vec3(0.12, 0.085, 0.04);
+    const rust = vec3(0.07, 0.03, 0.013);
+    let albedo = mix(basalt, rust, sstep(0.1, 0.5, n1).mul(0.5));
+    const sulf = sstep(0.3, 0.7, n2);
+    albedo = mix(albedo, sulfide, sulf.mul(0.6));
+    const up = sstep(0.6, 0.95, normalWorld.y);
+    albedo = mix(albedo, vec3(0.09, 0.088, 0.085), up.mul(sstep(0.0, 0.6, n1.add(0.2))).mul(0.45));
     m.colorNode = albedo;
-    m.roughnessNode = mix(float(0.95), float(0.55), sstep(0.35, 0.65, n2));
-    // crusty mineral relief
-    m.normalNode = normalize(T.normalView.add(T.mx_noise_vec3(p.mul(7.0)).mul(0.55)).add(T.mx_noise_vec3(p.mul(23.0)).mul(0.25)));
-    // glowing veins near each mouth (thermal cracks)
+    m.roughnessNode = mix(float(0.92), float(0.42), sulf);
+    m.metalnessNode = sulf.mul(0.55);
+    m.normalNode = normalize(T.normalView.add(T.mx_noise_vec3(p.mul(7.0)).mul(0.45)).add(T.mx_noise_vec3(p.mul(25.0)).mul(0.22)));
+    // emissive only at the lips of the orifices
     let em: N = vec3(0);
-    for (const mo of MOUTHS) {
-      const d = length(p.sub(vec3(mo.x, mo.y, mo.z)));
-      const near = exp(d.mul(-6.0));
-      const mottle = mx_noise_float(p.mul(vec3(9.0, 3.0, 9.0))).mul(0.5).add(0.5).clamp(0.0, 1.0);
-      em = em.add(vec3(1.0, 0.26, 0.05).mul(near.mul(mottle.pow(3.0)).mul(0.5)).add(vec3(1.0, 0.33, 0.07).mul(exp(d.mul(-16.0)).mul(0.7))));
+    for (let i = 0; i < 5; i++) {
+      const mi = this.uMouthI.element(i);
+      const d = length(p.sub(mi.xyz));
+      const lip = exp(d.mul(-11.0)).mul(mi.w);
+      const mottle = mx_noise_float(p.mul(14.0)).mul(0.5).add(0.5).clamp(0.0, 1.0);
+      em = em.add(vec3(1.0, 0.3, 0.06).mul(lip.mul(mottle.mul(0.7).add(0.3)).mul(0.9)));
     }
     m.emissiveNode = em.mul(this.uGlow);
     return m;
   }
 
+  /** far, faint cold backlight so black smoke and spires read as silhouettes */
+  private backdrop(): THREE.Mesh {
+    const mat = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false, fog: false });
+    mat.colorNode = T.Fn(() => {
+      const dir = normalize(positionWorld.sub(cameraPosition));
+      const up = clamp(dir.y.mul(0.8).add(0.35), 0.0, 1.0);
+      const streak = mx_noise_float(vec3(atan(dir.x, dir.z).mul(3.0), dir.y.mul(1.5), 0.0)).mul(0.5).add(0.5);
+      return vec4(vec3(0.0045, 0.009, 0.017).mul(up.pow(2.0)).mul(streak.mul(0.5).add(0.6)).mul(this.uBack), 1.0);
+    })();
+    const m = new THREE.Mesh(new THREE.SphereGeometry(80, 32, 16), mat);
+    m.renderOrder = -1;
+    return m;
+  }
+
   private mouthGlows(): THREE.Object3D {
     const g = new THREE.Group();
-    const n = MOUTHS.length;
-    const a = new Float32Array(n * 4);
-    MOUTHS.forEach((m, i) => a.set([m.x, m.y + 0.12, m.z, i === 0 ? 1 : 0.55], i * 4));
-    const glow = this.uGlow;
+    const a = new Float32Array(5 * 4);
+    for (let i = 0; i < 5; i++) a.set([i, MOUTH_W[i]!, 0, 0], i * 4);
     const t = this.uPT;
+    const glow = this.uGlow;
+    const MI = this.uMouthI;
     g.add(
       makeParticles({
-        count: n,
-        attributes: { a: [a, 4] },
-        renderOrder: 5,
-        softness: 3.0,
-        build: (at) => {
-          const flick = float(0.85).add(sin(t.mul(7.3).add(at.a.w.mul(10.0))).mul(0.06)).add(sin(t.mul(13.1)).mul(0.04));
-          return { center: at.a.xyz.sub(vec3(0, 0.1, 0)), size: at.a.w.mul(0.55), color: vec3(1.0, 0.22, 0.04).mul(glow.mul(flick).mul(at.a.w).mul(0.45)) };
-        },
-      }),
-    );
-    // wide warm haze around each mouth
-    g.add(
-      makeParticles({
-        count: n,
-        attributes: { a: [a, 4] },
-        renderOrder: 4,
-        softness: 1.6,
-        build: (at) => ({ center: at.a.xyz.add(vec3(0, 0.9, 0)), size: at.a.w.mul(5.0), color: vec3(0.7, 0.14, 0.03).mul(glow.mul(at.a.w).mul(0.022)) }),
-      }),
-    );
-    // throat core
-    g.add(
-      makeParticles({
-        count: n,
+        count: 5,
         attributes: { a: [a, 4] },
         renderOrder: 6,
         softness: 4.0,
-        build: (at) => ({ center: at.a.xyz.sub(vec3(0, 0.16, 0)), size: at.a.w.mul(0.2), color: vec3(1.0, 0.42, 0.12).mul(glow.mul(at.a.w).mul(1.6)) }),
+        build: (at) => {
+          const mi = MI.element(at.a.x.toInt());
+          const breathe = float(0.86).add(sin(t.mul(1.9).add(at.a.x.mul(2.0))).mul(0.08)).add(sin(t.mul(5.1).add(at.a.x)).mul(0.04));
+          return { center: mi.xyz.sub(vec3(0, 0.12, 0)), size: at.a.y.mul(0.22), color: vec3(1.0, 0.42, 0.1).mul(glow.mul(breathe).mul(mi.w).mul(1.5)) };
+        },
+      }),
+    );
+    g.add(
+      makeParticles({
+        count: 5,
+        attributes: { a: [a, 4] },
+        renderOrder: 5,
+        softness: 1.8,
+        build: (at) => {
+          const mi = MI.element(at.a.x.toInt());
+          return { center: mi.xyz.add(vec3(0, 0.35, 0)), size: at.a.y.mul(2.6), color: vec3(0.8, 0.16, 0.03).mul(glow.mul(mi.w).mul(0.035)) };
+        },
       }),
     );
     return g;
   }
 
+  /** black smoke: absorbing, billowing, lit dull red only at its base */
   private plumes(rng: Rng): THREE.Object3D {
-    const per = 700;
-    const n = per * MOUTHS.length;
+    const per = [900, 260, 200, 260, 220];
+    const n = per.reduce((a, b) => a + b, 0);
     const a = new Float32Array(n * 4);
     const b = new Float32Array(n * 4);
-    for (let i = 0; i < n; i++) {
-      const m = MOUTHS[Math.floor(i / per)]!;
-      const w = i < per ? 1 : 0.6;
-      a.set([m.x, m.y, m.z, rng.next()], i * 4);
-      b.set([rng.next(), rng.next(), rng.next(), w], i * 4);
-    }
+    let o = 0;
+    per.forEach((cnt, mi) => {
+      for (let i = 0; i < cnt; i++, o++) {
+        a.set([mi, MOUTH_W[mi]!, 0, rng.next()], o * 4);
+        b.set([rng.next(), rng.next(), rng.next(), rng.next()], o * 4);
+      }
+    });
     const t = this.uPT;
     const glow = this.uGlow;
+    const MI = this.uMouthI;
     return makeParticles({
       count: n,
       attributes: { a: [a, 4], b: [b, 4] },
       blending: THREE.NormalBlending,
       renderOrder: 7,
+      softness: 1.6,
       build: (at) => {
-        const life = float(7.0);
+        const mi = MI.element(at.a.x.toInt());
+        const w = at.a.y;
+        const life = float(6.5);
         const ph = fract(at.a.w.add(t.div(life)));
-        const h = ph.pow(0.8).mul(9.0).mul(at.b.w);
-        const swirl = vec3(
-          mx_noise_float(vec3(at.b.x.mul(9.0), h.mul(0.35), t.mul(0.15))),
+        const h = ph.pow(0.75).mul(6.5).mul(w.mul(0.6).add(0.4));
+        const curl = vec3(
+          mx_noise_float(vec3(at.b.x.mul(7.0), h.mul(0.6), t.mul(0.12))),
           float(0),
-          mx_noise_float(vec3(at.b.y.mul(9.0), h.mul(0.35), t.mul(0.15).add(5.0))),
-        ).mul(h.mul(0.22).add(0.08));
-        const spread = vec3(at.b.x.sub(0.5), 0, at.b.y.sub(0.5)).mul(h.mul(0.35).add(0.1));
-        const center = at.a.xyz.add(vec3(0, h.add(0.02), 0)).add(swirl).add(spread).add(vec3(h.mul(0.06), 0, 0));
-        const size = h.mul(0.3).add(0.14).mul(at.b.w.add(0.2));
-        // lit from below by the throat: warm at the base, near-black higher up
-        const lit = exp(h.mul(-1.6)).mul(glow);
-        const col = vec3(0.75, 0.16, 0.03).mul(lit.mul(0.65)).add(vec3(0.0022, 0.0018, 0.0016));
-        const alpha = sstep(0.0, 0.03, ph).mul(float(1).sub(sstep(0.6, 1.0, ph))).mul(0.3).mul(this.uReveal.mul(0.5).add(0.5));
-        return { center, size, color: col, alpha, rotation: at.b.z.mul(6.28).add(t.mul(0.2)) };
+          mx_noise_float(vec3(at.b.y.mul(7.0), h.mul(0.6), t.mul(0.12).add(5.0))),
+        ).mul(h.mul(0.3).add(0.04).mul(w));
+        const spread = vec3(at.b.x.sub(0.5), 0, at.b.y.sub(0.5)).mul(h.mul(0.42).add(0.06).mul(w));
+        const center = mi.xyz.add(vec3(0, h.add(0.02), 0)).add(curl).add(spread).add(vec3(h.mul(0.08), 0, h.mul(0.03)));
+        const size = h.mul(0.34).add(0.1).mul(w);
+        const base = exp(h.div(w.mul(0.55).add(0.05)).negate()).mul(glow).mul(mi.w);
+        const col = vec3(0.65, 0.12, 0.02).mul(base.mul(0.9)).add(vec3(0.0011, 0.0012, 0.0014));
+        const alpha = sstep(0.0, 0.025, ph).mul(float(1).sub(sstep(0.55, 1.0, ph))).mul(0.55).mul(mi.w.min(1.0)).mul(this.uReveal.mul(0.5).add(0.5));
+        return { center, size, color: col, alpha, rotation: at.b.z.mul(6.28).add(t.mul(0.15)) };
       },
     });
   }
 
   private particulates(rng: Rng): THREE.Object3D {
-    const n = 7000;
+    const n = 5200;
     const a = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
       let x: number, y: number, z: number;
-      if (i < 1600) {
-        // a denser veil around the protocell (seen in the macro shot)
-        x = PROTOCELL.x + rng.normal(0, 0.16);
+      if (i < 1500) {
+        x = PROTOCELL.x + rng.normal(0, 0.18);
         y = PROTOCELL.y + rng.normal(0, 0.12);
-        z = PROTOCELL.z + rng.normal(0, 0.16);
+        z = PROTOCELL.z + rng.normal(0, 0.18);
+      } else if (i < 3400) {
+        // a column of warm motes above the hero orifice
+        x = rng.normal(0, 0.9);
+        y = rng.range(4.2, 10);
+        z = rng.normal(0, 0.9);
       } else {
         x = rng.range(-9, 9);
         y = rng.range(-0.2, 11);
@@ -337,68 +334,65 @@ export class VentStage extends Stage {
       count: n,
       attributes: { a: [a, 4] },
       renderOrder: 9,
-      softness: 1.2,
+      softness: 1.0,
       build: (at) => {
         const s = at.a.w;
-        const drift = vec3(
-          sin(t.mul(0.21).add(s.mul(40.0))).mul(0.12),
-          t.mul(0.05).mul(s.add(0.3)),
-          cos(t.mul(0.17).add(s.mul(23.0))).mul(0.12),
-        );
+        const drift = vec3(sin(t.mul(0.21).add(s.mul(40.0))).mul(0.1), t.mul(0.06).mul(s.add(0.3)), cos(t.mul(0.17).add(s.mul(23.0))).mul(0.1));
         const p = at.a.xyz.add(drift);
-        // light from the three mouths
-        let L: N = float(0);
-        MOUTHS.forEach((m, i) => {
-          const d2 = p.sub(vec3(m.x, m.y + 0.4, m.z)).dot(p.sub(vec3(m.x, m.y + 0.4, m.z)));
-          L = L.add(float(i === 0 ? 3.2 : 1.6).div(d2.add(0.6)));
-        });
-        // protocell spark light (macro)
+        const warm = this.warmField(p);
         const ds = p.sub(vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z));
         const Ls = this.uSparkI.mul(0.004).div(ds.dot(ds).add(0.002));
-        // fake depth of field: circle of confusion grows the sprite and spreads its energy
         const viewP = cameraViewMatrix.mul(modelWorldMatrix.mul(vec4(p, 1.0)));
         const depth = viewP.z.negate().max(0.01);
-        const coc = abs(depth.sub(focus)).div(depth).mul(aperture).mul(0.06);
-        const base = s.mul(0.006).add(0.0025).mul(depth.mul(0.08).add(0.25));
+        const coc = abs(depth.sub(focus)).div(depth).mul(aperture).mul(0.05);
+        const base = s.mul(0.005).add(0.002).mul(depth.mul(0.07).add(0.25));
         const size = base.add(coc);
-        const energy = base.div(size).pow(1.3);
-        const veil = sstep(0.9, 0.5, length(at.a.xyz.sub(vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z))));
-        const vis = mix(float(1.0), this.uAperture.clamp(0.0, 1.0), veil);
-        const col = vec3(1.0, 0.55, 0.25).mul(L.mul(glow)).add(vec3(this.uSpark).mul(Ls)).mul(energy).mul(0.3).mul(vis);
-        return { center: p, size, color: col };
+        const energy = base.div(size).pow(1.4);
+        const veil = sstep(0.7, 0.4, length(at.a.xyz.sub(vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z))));
+        const vis = mix(float(1.0), aperture.clamp(0.0, 1.0), veil);
+        const coldRim = vec3(0.04, 0.07, 0.12).mul(this.uBack).mul(0.25);
+        const col = vec3(1.0, 0.45, 0.16).mul(warm.mul(glow).mul(0.6)).add(coldRim).add(vec3(this.uSpark).mul(Ls)).mul(energy).mul(0.35).mul(vis);
+        return {
+          center: p,
+          size,
+          color: col,
+          // hexagonal aperture for out-of-focus discs
+          shape: (q: N) => {
+            const ang = atan(q.y, q.x);
+            const hex = cos(float(Math.PI / 6)).div(cos(ang.mod(Math.PI / 3).sub(Math.PI / 6)));
+            const r = length(q).div(hex);
+            const disc = sstep(1.0, 0.86, r);
+            const soft = float(1.0).sub(length(q)).max(0.0).pow(1.2);
+            return mix(soft, disc.mul(r.mul(0.25).add(0.75)), sstep(0.0005, 0.004, coc));
+          },
+        };
       },
     });
   }
 
+  /** heat haze: refracts what lies behind the column above the hero orifice */
   private shimmer(): THREE.Object3D {
-    // heat haze: a column that refracts what is behind it
     const g = new THREE.Group();
-    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
     const t = this.uPT;
     const q = uv();
-    const w = sstep(0.0, 0.25, q.x).mul(sstep(1.0, 0.75, q.x)).mul(sstep(0.0, 0.15, q.y)).mul(sstep(1.0, 0.35, q.y));
-    const n = mx_noise_float(vec3(q.x.mul(6.0), q.y.mul(4.0).sub(t.mul(1.6)), t.mul(0.4)));
-    // a warm wavering sheen (stand-in for refraction; additive and subtle)
-    mat.colorNode = vec4(vec3(1.0, 0.4, 0.1).mul(n.abs().pow(3.0).mul(w).mul(this.uGlow).mul(0.35)), 1.0);
-    for (let i = 0; i < MOUTHS.length; i++) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 3.2), mat);
-      m.position.copy(MOUTHS[i]!).add(new THREE.Vector3(0, 1.75, 0));
-      m.scale.setScalar(i === 0 ? 1 : 0.6);
-      m.renderOrder = 8;
-      m.userData.billboard = true;
-      g.add(m);
-    }
-    g.userData.billboards = g.children;
+    const w = sstep(0.0, 0.3, q.x).mul(sstep(1.0, 0.7, q.x)).mul(sstep(0.0, 0.12, q.y)).mul(sstep(1.0, 0.4, q.y)).mul(this.uGlow);
+    const nx = mx_noise_float(vec3(q.x.mul(5.0), q.y.mul(6.0).sub(t.mul(2.4)), t.mul(0.5)));
+    const ny = mx_noise_float(vec3(q.x.mul(5.0).add(9.0), q.y.mul(6.0).sub(t.mul(2.4)), t.mul(0.5)));
+    const offs = vec2(nx, ny).mul(0.006).mul(w);
+    mat.colorNode = vec4(viewportSharedTexture(screenUV.add(offs)).rgb, w.mul(0.9));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.6), mat);
+    m.position.set(0, 5.2 + 1.45, 0);
+    m.renderOrder = 30;
+    m.userData.billboard = true;
+    g.add(m);
     return g;
   }
 
   private micelles(rng: Rng): THREE.Object3D {
-    // fatty-acid vesicles drifting near the protocell: tiny iridescent rings
-    const n = 260;
+    const n = 70;
     const a = new Float32Array(n * 4);
-    for (let i = 0; i < n; i++) {
-      a.set([PROTOCELL.x + rng.normal(0, 0.22), PROTOCELL.y + rng.normal(0, 0.16), PROTOCELL.z + rng.normal(0, 0.22), rng.next()], i * 4);
-    }
+    for (let i = 0; i < n; i++) a.set([PROTOCELL.x + rng.normal(0, 0.12), PROTOCELL.y + rng.normal(0, 0.08), PROTOCELL.z + rng.normal(0, 0.12), rng.next()], i * 4);
     const t = this.uPT;
     return makeParticles({
       count: n,
@@ -406,17 +400,18 @@ export class VentStage extends Stage {
       renderOrder: 11,
       build: (at) => {
         const s = at.a.w;
-        const p = at.a.xyz.add(vec3(sin(t.mul(0.3).add(s.mul(30.0))), cos(t.mul(0.23).add(s.mul(17.0))), sin(t.mul(0.27).add(s.mul(11.0)))).mul(0.02));
-        const size = s.mul(0.0022).add(0.0009);
-        const irid = vec3(0.5).add(vec3(cos(s.mul(12.0)), cos(s.mul(12.0).add(2.1)), cos(s.mul(12.0).add(4.2))).mul(0.5));
+        const p = at.a.xyz.add(vec3(sin(t.mul(0.3).add(s.mul(30.0))), cos(t.mul(0.23).add(s.mul(17.0))), sin(t.mul(0.27).add(s.mul(11.0)))).mul(0.015));
+        const size = s.mul(0.0028).add(0.0012);
+        const warm = vec3(1.0, 0.7, 0.45);
+        const cool = vec3(0.55, 0.75, 1.0);
         const vis = this.uAperture.mul(1.2).min(1.0);
         return {
           center: p,
           size,
-          color: irid.mul(0.6).add(0.2).mul(vis).mul(0.22),
+          color: mix(warm, cool, s).mul(vis).mul(0.07),
           shape: (q: N) => {
             const r = length(q);
-            return sstep(0.35, 0.92, r).mul(sstep(1.0, 0.9, r)).mul(0.8).add(sstep(1.0, 0.0, r).mul(0.15));
+            return sstep(0.6, 0.93, r).mul(sstep(1.0, 0.93, r)).add(sstep(1.0, 0.0, r).mul(0.06));
           },
         };
       },
@@ -424,8 +419,7 @@ export class VentStage extends Stage {
   }
 
   private buildMembrane(): THREE.Mesh {
-    // parametric spherical cap (u: polar fraction, v: azimuth) shaped in the vertex stage
-    const nu = 64, nv = 96;
+    const nu = 72, nv = 112;
     const geo = new THREE.BufferGeometry();
     const uvs = new Float32Array((nu + 1) * (nv + 1) * 2);
     const pos = new Float32Array((nu + 1) * (nv + 1) * 3);
@@ -446,37 +440,35 @@ export class VentStage extends Stage {
     geo.setIndex(idx);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 10);
 
-    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
     const q = attribute('uv', 'vec2');
     const thMax = this.uTheta;
     const Rf = this.uRadius;
-    // area conservation: R = Rf * sqrt(2 / (1 - cos θmax))
     const R = Rf.mul(float(2.0).div(float(1.0).sub(cos(thMax))).sqrt());
     const th = q.x.mul(thMax);
     const ph = q.y.mul(Math.PI * 2);
-    const wob = mx_noise_float(vec3(q.x.mul(3.0), q.y.mul(6.0), this.uPT.mul(0.5))).mul(Rf.mul(0.045)).mul(float(1).sub(this.uClosed.mul(0.7)));
+    const wob = mx_noise_float(vec3(q.x.mul(3.0), q.y.mul(6.0), this.uPT.mul(0.5))).mul(Rf.mul(0.04)).mul(float(1).sub(this.uClosed.mul(0.75)));
     const rr = R.add(wob);
-    // pole at the bottom; sphere centre sits at +R above the pole. Final centre = protocell.
     const local = vec3(sin(th).mul(cos(ph)).mul(rr), R.sub(cos(th).mul(rr)), sin(th).mul(sin(ph)).mul(rr));
     const pole = vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z).sub(vec3(0, Rf, 0));
-    const world = pole.add(local);
-    mat.positionNode = world;
+    mat.positionNode = pole.add(local);
     const vN = varying(normalize(local.sub(vec3(0, R, 0))));
     const vEdge = varying(q.x);
-    const vW = varying(world);
-    // thin-film interference: thickness varies over the bilayer
+    const vW = varying(pole.add(local));
     const view = normalize(cameraPosition.sub(vW));
     const cosI = abs(dot(vN, view)).clamp(0.0, 1.0);
-    const thick = float(330.0).add(mx_noise_float(vW.mul(180.0).add(vec3(0, this.uPT.mul(0.3), 0))).mul(170.0));
+    // thin film: smooth flowing bands, thicker toward the bottom (drainage), swirling slowly
+    const flow = vec3(vN.x.mul(2.2), vN.y.mul(2.2).add(this.uPT.mul(0.12)), vN.z.mul(2.2));
+    const thick = float(420.0).add(mx_noise_float(flow).mul(160.0)).add(mx_noise_float(flow.mul(2.3).add(5.0)).mul(50.0)).sub(vN.y.mul(110.0));
     const sinT2 = float(1.0).sub(cosI.mul(cosI)).div(1.33 * 1.33);
     const cosT = float(1.0).sub(sinT2).sqrt();
     const opd = thick.mul(2.0 * 1.33).mul(cosT);
-    const film = vec3(0.5).sub(cos(opd.mul(vec3(2 * Math.PI / 650, 2 * Math.PI / 532, 2 * Math.PI / 450))).mul(0.5));
-    const fres = float(1.0).sub(cosI).clamp(0.0, 1.0).pow(2.2);
-    const rim = sstep(0.82, 1.0, vEdge).mul(float(1).sub(this.uClosed));
-    const inner = vec3(this.uSpark).mul(this.uSparkI.mul(0.008));
-    const warm = vec3(1.0, 0.55, 0.25).mul(0.25);
-    const col = film.mul(fres.mul(0.85).add(0.02)).mul(inner.add(warm).add(0.2)).add(vec3(1.0, 0.85, 0.7).mul(rim.mul(0.2)));
+    const film = vec3(0.5).sub(cos(opd.mul(vec3((2 * Math.PI) / 650, (2 * Math.PI) / 532, (2 * Math.PI) / 450))).mul(0.5));
+    // transparent core, strongest at grazing angles
+    const fres = float(1.0).sub(cosI).clamp(0.0, 1.0).pow(1.6);
+    const rim = sstep(0.85, 1.0, vEdge).mul(float(1).sub(this.uClosed));
+    const lightIn = vec3(this.uSpark).mul(this.uSparkI.mul(0.006)).add(vec3(1.0, 0.5, 0.2).mul(0.12));
+    const col = film.mul(fres.mul(1.2).add(0.008)).mul(lightIn.add(0.18)).add(vec3(1.0, 0.85, 0.7).mul(rim.mul(0.18)));
     mat.colorNode = vec4(col.mul(this.uMembraneA), 1.0);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;
@@ -490,31 +482,29 @@ export class VentStage extends Stage {
     const sc = this.uSpark;
     const I = this.uSparkI;
     const t = this.uPT;
-    // halo
     g.add(
       makeParticles({
         count: 1,
         attributes: { a: [one, 4] },
         renderOrder: 14,
-        softness: 2.2,
-        build: (at) => ({ center: at.a.xyz, size: float(0.022), color: vec3(sc).mul(I.mul(0.01)) }),
+        softness: 3.0,
+        build: (at) => ({ center: at.a.xyz, size: float(0.03), color: vec3(sc).mul(I.mul(0.006)) }),
       }),
     );
-    // core
     g.add(
       makeParticles({
         count: 1,
         attributes: { a: [one, 4] },
         renderOrder: 15,
-        softness: 6.0,
+        softness: 8.0,
         build: (at) => {
-          const flick = float(1.0).add(sin(t.mul(31.0)).mul(0.08)).add(sin(t.mul(17.0)).mul(0.1));
-          return { center: at.a.xyz, size: float(0.0035), color: vec3(sc).mul(I.mul(flick).mul(0.9)).add(vec3(I.mul(0.12))) };
+          const flick = float(1.0).add(sin(t.mul(31.0)).mul(0.06)).add(sin(t.mul(17.0)).mul(0.07));
+          return { center: at.a.xyz, size: float(0.0032), color: vec3(sc).mul(I.mul(flick).mul(0.8)).add(vec3(I.mul(0.08))) };
         },
       }),
     );
-    // chemistry: tiny satellite sparks flickering around the centre
-    const n = 40;
+    // a few flickers of chemistry before the membrane closes
+    const n = 10;
     const a = new Float32Array(n * 4);
     const rng = new Rng(VENT_SEED, 3);
     for (let i = 0; i < n; i++) a.set([rng.normal(0, 1), rng.normal(0, 1), rng.normal(0, 1), rng.next()], i * 4);
@@ -526,21 +516,10 @@ export class VentStage extends Stage {
         softness: 3.0,
         build: (at) => {
           const s = at.a.w;
-          const blink = sstep(0.82, 1.0, sin(t.mul(s.mul(9.0).add(4.0)).add(s.mul(50.0))));
-          const r = this.uRadius.mul(0.55).mul(float(1).sub(this.uClosed.mul(0.4)));
-          const p = vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z).add(normalize(at.a.xyz).mul(r.mul(s.add(0.3))));
-          return { center: p, size: float(0.0012), color: vec3(sc).mul(blink.mul(I).mul(0.35)) };
+          const blink = sstep(0.9, 1.0, sin(t.mul(s.mul(7.0).add(3.0)).add(s.mul(50.0)))).mul(float(1.0).sub(this.uClosed));
+          const p = vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z).add(normalize(at.a.xyz).mul(this.uRadius.mul(0.5).mul(s.add(0.3))));
+          return { center: p, size: float(0.001), color: vec3(sc).mul(blink.mul(I).mul(0.25)) };
         },
-      }),
-    );
-    // inner glow once closed
-    g.add(
-      makeParticles({
-        count: 1,
-        attributes: { a: [one, 4] },
-        renderOrder: 13,
-        softness: 1.5,
-        build: (at) => ({ center: at.a.xyz, size: this.uRadius.mul(1.9), color: vec3(sc).mul(this.uClosed.mul(I).mul(0.0025)) }),
       }),
     );
     return g;
@@ -550,38 +529,47 @@ export class VentStage extends Stage {
   setPrologueTime(pt: number, spark: THREE.Color): void {
     this.pt = pt;
     this.uPT.value = pt;
-    const glow = smoothstep(0.5, 3.4, pt) * (0.92 + 0.08 * noise1(pt * 1.7, 5));
+    const glow = smoothstep(0.4, 3.6, pt) * (0.9 + 0.1 * noise1(pt * 1.3, 5));
     this.uGlow.value = glow;
-    this.uReveal.value = smoothstep(2.6, 6.0, pt);
+    this.uReveal.value = smoothstep(2.6, 6.2, pt);
+    this.uBack.value = smoothstep(1.5, 6.0, pt);
     (this.uSpark.value as THREE.Color).copy(spark);
-    // the spark: a glint from ~4 s, kindles when the membrane closes (~9.1 s)
+    // one orifice first; its siblings and the background spires wake later
+    const wake = [smoothstep(0.3, 2.6, pt), smoothstep(2.4, 4.6, pt), smoothstep(2.9, 5.2, pt), smoothstep(3.6, 6.2, pt), smoothstep(4.0, 6.6, pt)];
+    for (let i = 0; i < 5; i++) {
+      const m = MOUTHS[i]!;
+      const breathe = 0.85 + 0.15 * Math.sin(pt * (1.4 + i * 0.37) + i);
+      this.mouthI[i]!.set(m.x, m.y, m.z, wake[i]! * MOUTH_W[i]! * breathe);
+      this.lights[i]!.intensity = glow * wake[i]! * MOUTH_W[i]! * 7 * breathe;
+    }
+    this.lights[5]!.intensity = this.uBack.value * 260;
     const close = smoothstep(6.9, 9.1, pt);
     const kindle = smoothstep(9.05, 9.35, pt);
     const flare = Math.exp(-Math.pow((pt - 9.25) / 0.18, 2));
     this.uSparkI.value = smoothstep(3.6, 6.5, pt) * 3 + kindle * 7 + flare * 9;
-    const th = lerp(0.42, Math.PI, easeInOutCubic(close));
-    this.uTheta.value = th;
-    this.uRadius.value = 0.034;
+    this.uTheta.value = lerp(0.42, Math.PI, easeInOutCubic(close));
     this.uClosed.value = smoothstep(8.85, 9.2, pt);
     this.uMembraneA.value = smoothstep(6.0, 7.2, pt);
-    this.uHaze.value = smoothstep(6.6, 8.2, pt) * 0.18;
-    const flick = 0.85 + 0.15 * noise1(pt * 3.1, 9);
-    this.lights[0]!.intensity = glow * 24 * flick;
-    this.lights[1]!.intensity = glow * 11 * flick;
-    this.lights[2]!.intensity = glow * 9 * flick;
-    this.lights[3]!.intensity = this.uReveal.value * 160;
+    this.uHaze.value = smoothstep(6.6, 8.2, pt) * 0.05;
   }
 
+  private lastPT = 0;
   update(f: FrameContext, shot: ShotRuntime): void {
     const off = Number(shot.def.params?.offset ?? 0);
     const pt = clamp01((off + shot.t) / 10) * 10;
+    if (this.lastPT < 8.95 && pt >= 8.95) f.cue('membrane');
+    if (this.lastPT < 9.2 && pt >= 9.2) f.cue('spark');
+    this.lastPT = pt;
     this.setPrologueTime(pt, f.spark);
     const p = ventPath(pt);
     this.uFocus.value = p.focus ?? 10;
     this.uAperture.value = p.aperture ?? 0;
-    // billboards face the camera
     this.scene.traverse((o) => {
       if (o.userData.billboard) o.quaternion.copy(this.camera.quaternion);
     });
   }
 }
+
+void pow;
+void max;
+void min;

@@ -14,7 +14,7 @@ export abstract class Stage {
   /** last frame this stage was updated (to detect fresh activation) */
   lastFrame = -10;
   /** per-stage post settings (bloom strength / threshold, exposure) */
-  post = { bloom: 0.6, threshold: 0.0, exposure: 1.0, grain: 0.035, vignette: 0.32 };
+  post = { bloom: 0.6, threshold: 0.0, exposure: 1.0, grain: 0.035, vignette: 0.32, chroma: 0.0025 };
 
   /** Build geometry/materials. Called lazily before first use (and for pre-warm). */
   abstract build(): void;

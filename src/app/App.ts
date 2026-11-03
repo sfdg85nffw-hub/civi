@@ -7,6 +7,7 @@ import { FreeCamera } from '../director/FreeCamera';
 import { CHAPTERS, chapterById, TAKEOVER_T } from '../chapters/meta';
 import { CHAPTER_DEFS, STAGE_FACTORIES } from '../chapters/registry';
 import type { Stage } from '../render/stages/Stage';
+import { preloadVentGeometry } from '../render/stages/VentStage';
 import { PlanetStage, preloadPlanetAssets } from '../render/stages/PlanetStage';
 import type { FrameContext } from './frame';
 import { worldAt } from '../fate/world';
@@ -166,7 +167,7 @@ export class App {
     this.exposeAPI();
 
     try {
-      await preloadPlanetAssets();
+      await Promise.all([preloadPlanetAssets(), preloadVentGeometry()]);
     } catch (e) {
       console.error('Failed to load planet assets', e);
     }
@@ -346,6 +347,14 @@ export class App {
     this.cardShownFor = ch;
   }
 
+  private cueTimes = new Map<string, number>();
+  fireCue(id: string, x?: number): void {
+    const last = this.cueTimes.get(id) ?? -1e9;
+    if (this.clock - last < 0.25) return;
+    this.cueTimes.set(id, this.clock);
+    this.audio?.cue(id, x);
+  }
+
   setHint(k: string, v: number): void {
     this.hints[k] = v;
   }
@@ -420,7 +429,10 @@ export class App {
       seed: this.seed,
       freshStage: false,
       agents: this.sims.latest,
+      cue: (id, x) => this.fireCue(id, x),
     };
+    // sim-time cues of this chapter (fire when crossed forward)
+    for (const c of chDef?.cues ?? []) if (this.lastT < c.T && T >= c.T && T - this.lastT < 5e8) this.fireCue(c.id);
 
     const out = this.director.update(f);
     this.renderLayers(f, out);
@@ -515,6 +527,7 @@ export class App {
         fx.uBloomThreshold.value = l(a.threshold, b.threshold);
         fx.uGrain.value = l(a.grain, b.grain);
         fx.uVignette.value = l(a.vignette, b.vignette);
+        fx.uChroma.value = l(a.chroma, b.chroma);
         fx.uExposure.value = a.exposure;
         fx.uExposureB.value = b.exposure;
       }
@@ -562,7 +575,7 @@ export class App {
         this.director.reset();
       },
       seekT: (T: number) => this.time.seekT(T),
-      shots: () => this.director.allShots().map((x) => ({ chapter: x.chapter, index: x.index, id: x.def.id, s0: x.s0, dur: x.dur, signature: !!x.def.signature, label: x.def.label ?? x.def.id })),
+      shots: () => this.director.allShots().map((x) => ({ chapter: x.chapter, index: x.index, id: x.def.id, s0: x.s0, dur: x.dur, signature: !!x.def.signature, label: x.def.label ?? x.def.id, su: x.def.params?.su })),
       run: (n: number) => {
         this.runFrames = n;
       },

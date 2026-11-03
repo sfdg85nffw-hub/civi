@@ -10,7 +10,7 @@ const M = 1e6;
 
 export const WORLD_TRACKS: Record<string, Track> = {
   // orange methane / hydrocarbon haze
-  haze: [[-4.0 * G, 0.85], [-2.5 * G, 0.82], [-2.43 * G, 0.6], [-2.36 * G, 0.12], [-2.0 * G, 0.06], [-1.6 * G, 0.03], [-1.0 * G, 0.0]],
+  haze: [[-4.0 * G, 0.85], [-2.5 * G, 0.82], [-2.43 * G, 0.6], [-2.37 * G, 0.08], [-2.3 * G, 0.02], [-2.0 * G, 0.0]],
   // atmospheric O2 relative to present
   o2: [[-4.0 * G, 0], [-2.45 * G, 0.0], [-2.32 * G, 0.06], [-2.06 * G, 0.12], [-1.9 * G, 0.03], [-0.8 * G, 0.05], [-0.6 * G, 0.3], [-0.5 * G, 0.55], [-0.3 * G, 1.5], [-0.252 * G, 0.75], [-0.2 * G, 0.9], [0, 1.0]],
   // global ice coverage (0 = none, 1 = snowball); Quaternary cycles are added analytically

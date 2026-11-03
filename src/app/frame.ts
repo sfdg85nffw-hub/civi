@@ -31,6 +31,8 @@ export interface FrameContext {
   freshStage: boolean;
   /** latest local-rule simulation snapshot for this chapter (or null) */
   agents: AgentFrame | null;
+  /** fire a discrete event (audio stingers, flashes); deduplicated per id by the App */
+  cue: (id: string, x?: number) => void;
 }
 
 /** Peak-limited flash for photosensitive viewers. */

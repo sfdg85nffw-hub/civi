@@ -274,7 +274,7 @@ export class MicrobeSim implements AgentSim {
     c[o + Y] = y;
     c[o + PX] = x;
     c[o + PY] = y;
-    c[o + RAD] = (spec === 1 ? 0.0052 : spec === 2 ? 0.0044 : 0.0066) * this.rng.range(0.85, 1.15);
+    c[o + RAD] = (spec === 1 ? 0.0034 : spec === 2 ? 0.0042 : 0.0062) * this.rng.range(0.75, 1.25);
     c[o + ANG] = this.rng.range(0, Math.PI * 2);
     c[o + SPEC] = spec;
     c[o + HUE] = g.hue;
@@ -361,7 +361,7 @@ export class MicrobeSim implements AgentSim {
       if (spec === 1) this.R[ci] = Math.min(1, this.R[ci]! + 0.02 * dt);
       // run and tumble: keep going while food improves, tumble otherwise
       const ang = c[o + ANG]!;
-      const sp = g.motility * 0.012;
+      const sp = g.motility * (spec === 1 ? 0.006 : 0.012);
       const ahead = this.sample(U, x + Math.cos(ang) * 0.02, y + Math.sin(ang) * 0.02);
       if (ahead < u && rng.next() < dt * 2.5) c[o + ANG] = ang + rng.normal(0, 1.4);
       else c[o + ANG] = ang + rng.normal(0, 0.25) * dt;

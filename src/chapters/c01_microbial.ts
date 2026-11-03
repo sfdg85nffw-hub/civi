@@ -7,34 +7,35 @@ import { MICROBE_FATE } from '../sim/agents/microbes';
 export const microbial: ChapterDef = {
   meta: CHAPTERS[1]!,
   sim: { id: 'microbes', fate: MICROBE_FATE },
+  cues: [{ T: -2.4e9, id: 'goe' }],
   agentShot: {
     id: 'm-mat-manual', stage: 'micro', dur: 14, label: 'The mat (manual)',
     transition: { type: 'dive', dur: 1.4 },
-    rig: push({ from: [0.1, 0.8, 0.3], to: [-0.1, 0.62, 0.18], target: [0.05, 0, 0], targetTo: [-0.05, 0, 0], fov: 33, ease: easeInOutSine }),
+    rig: push({ from: [0.06, 0.48, 0.06], to: [-0.06, 0.4, 0.04], target: [0.06, 0, 0], targetTo: [-0.06, 0, 0], fov: 33, ease: easeInOutSine }),
   },
   shots: [
     {
       id: 'm-young', stage: 'planet', dur: 4.5, label: 'The young Earth (match cut)',
       transition: { type: 'match', dur: 1.2 },
       rig: push({ from: [0, 0, 7.66], to: [0.35, 0.12, 4.3], target: [0, 0, 0], targetTo: [0.12, 0.05, 0], fov: 30, fovTo: 30, ease: easeOutCubic }),
-      params: { lat: 12, lon: -40, spin: 14, sunAz: 105, sunEl: 8, moon: 1 },
+      params: { lat: 12, lon: -40, spin: 14, sunAz: 105, sunEl: 8, moon: 1, su: 0.75 },
     },
     {
-      id: 'm-mat', stage: 'micro', dur: 11, label: 'The mat', signature: true,
+      id: 'm-mat', stage: 'micro', dur: 11, label: 'The mat', signature: true, params: { su: 0.45 },
       transition: { type: 'dive', dur: 1.6 },
-      rig: push({ from: [0.06, 0.5, 0.34], to: [-0.05, 0.36, 0.22], target: [0.04, 0, 0.0], targetTo: [-0.04, 0, -0.02], fov: 34, fovTo: 32, ease: easeInOutSine, focus: 0.5, focusTo: 0.36, aperture: 0.25 }),
+      rig: push({ from: [0.05, 0.5, 0.07], to: [-0.04, 0.36, 0.035], target: [0.05, 0, 0.0], targetTo: [-0.04, 0, -0.01], fov: 34, fovTo: 32, ease: easeInOutSine, roll: 0.0, rollTo: 0.12 }),
     },
     {
       id: 'm-goe', stage: 'planet', dur: 6, label: 'The Great Oxidation (orbital time-lapse)', signature: true,
       transition: { type: 'dissolve', dur: 1.2 },
-      rig: orbit({ radius: 3.25, radiusTo: 3.05, elev: 0.18, elevTo: 0.1, az: -0.45, azTo: 0.15, fov: 34, ease: easeInOutSine }),
-      params: { lat: 18, lon: 10, spin: 70, sunAz: 62, sunEl: 10 },
+      rig: orbit({ radius: 3.4, radiusTo: 3.15, elev: 0.16, elevTo: 0.1, az: -0.25, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.25, 0, 0] }),
+      params: { lat: 18, lon: 10, spin: 70, sunAz: 98, sunEl: 12, su: 0.85, stars: 0.12 },
     },
     {
       id: 'm-snowball', stage: 'planet', dur: 3.5, label: 'Snowball', signature: true,
       transition: { type: 'blend', dur: 1.5 },
-      rig: orbit({ radius: 3.0, radiusTo: 3.4, elev: 0.25, elevTo: 0.35, az: 0.15, azTo: 0.4, fov: 34, ease: easeInOutSine }),
-      params: { lat: 30, lon: 60, spin: 40, sunAz: 50, sunEl: 20 },
+      rig: orbit({ radius: 3.3, radiusTo: 3.6, elev: 0.25, elevTo: 0.32, az: 0.1, azTo: 0.3, fov: 34, ease: easeInOutSine, targetOffset: [-0.3, 0, 0] }),
+      params: { lat: 30, lon: 60, spin: 40, sunAz: 82, sunEl: 22, su: 0.5, stars: 0.1 },
     },
   ],
 };

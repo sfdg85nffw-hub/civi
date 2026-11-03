@@ -99,6 +99,9 @@ export class PlanetStage extends Stage {
     traps: uniform(0),
     trapsDir: uniform(new THREE.Vector3(0, 1, 0)),
     nightBoost: uniform(1),
+    sunLocal: uniform(new THREE.Vector3(1, 0, 0)),
+    stars: uniform(0.2),
+    limb: uniform(1.6),
     exposure: uniform(1),
     impactWinter: uniform(0),
     firestorm: uniform(0),
@@ -126,7 +129,7 @@ export class PlanetStage extends Stage {
   }
 
   build(): void {
-    this.post = { bloom: 0.35, threshold: 0.75, exposure: 1.0, grain: 0.03, vignette: 0.3 };
+    this.post = { bloom: 0.3, threshold: 1.1, exposure: 1.0, grain: 0.03, vignette: 0.3, chroma: 0.0005 };
     this.camera.near = 0.01;
     this.camera.far = 2000;
     this.scene.background = new THREE.Color(0, 0, 0);
@@ -262,13 +265,17 @@ export class PlanetStage extends Stage {
       const bands = sst(0.2, 0.8, sin(n.y.mul(90.0).add(d1.mul(12.0))).mul(0.5).add(0.5));
       ocean = mix(ocean, vec3(0.2, 0.06, 0.02), u.bandedIron.mul(shelf).mul(bands.mul(0.6).add(0.2)));
       ocean = mix(ocean, vec3(0.03, 0.05, 0.02), u.mats.mul(shelf).mul(0.6));
-      // ---- ice ----
+      // ---- ice: brilliant snow, sastrugi, sea-ice leads, an equatorial slush band in snowball ----
       const iceEdge = asin(clamp(float(1.0).sub(u.ice), 0.0, 1.0)).div(Math.PI / 2);
       const iceN = d1.mul(0.08).add(d2.mul(0.02));
-      const iceMask = sst(iceEdge.sub(0.015), iceEdge.add(0.015), absLat.add(iceN)).max(sst(0.9, 0.97, u.ice));
-      const cracks = float(1.0).sub(abs(mx_noise_float(n.mul(vec3(9.0, 5.0, 9.0)).add(d1.mul(0.6))))).pow(40.0).mul(0.6);
-      const sast = mx_noise_float(n.mul(vec3(120.0, 40.0, 120.0))).mul(0.04);
-      const iceCol = mix(vec3(0.46, 0.52, 0.58), vec3(0.62, 0.66, 0.7), d2.mul(0.5).add(0.5).add(sast)).mul(mix(float(1.0), float(0.9), land.oneMinus())).mul(float(1.0).sub(cracks.mul(0.35))).add(vec3(0.0, 0.01, 0.03).mul(cracks));
+      const snowball = sst(0.9, 0.97, u.ice);
+      const iceMask = sst(iceEdge.sub(0.015), iceEdge.add(0.015), absLat.add(iceN)).max(snowball);
+      const sast = mx_noise_float(n.mul(vec3(160.0, 22.0, 160.0))).mul(0.5).add(0.5);
+      const leads = sst(0.985, 0.998, float(1.0).sub(abs(mx_noise_float(n.mul(vec3(7.0, 4.0, 7.0)).add(d1.mul(1.4)))))).mul(land.oneMinus());
+      const slush = sst(0.22, 0.0, absLat).mul(snowball).mul(sst(0.2, 0.7, d1.mul(0.5).add(0.5)));
+      let iceCol = mix(vec3(0.74, 0.79, 0.84), vec3(0.88, 0.9, 0.92), sast.mul(0.6).add(d2.mul(0.2)).add(0.2));
+      iceCol = mix(iceCol, vec3(0.26, 0.34, 0.42), leads.mul(0.7));
+      iceCol = mix(iceCol, vec3(0.36, 0.46, 0.52), slush.mul(0.5));
       // ---- bombardment and volcanism ----
       const crat = mx_worley_noise_float(n.mul(22.0));
       const craters = sst(0.12, 0.05, crat).mul(u.bombardment);
@@ -277,33 +284,55 @@ export class PlanetStage extends Stage {
       let albedo = mix(ocean, landCol, land);
       albedo = mix(albedo, iceCol, iceMask);
       // ---- lighting ----
-      const nW = normalize(positionWorld);
+      const nW0 = normalize(positionWorld);
+      // fine relief on ice and land so the terminator shows texture
+      const bump = T.mx_noise_vec3(n.mul(55.0)).mul(iceMask.mul(0.06).add(land.mul(0.05)));
+      const nW = normalize(nW0.add(bump));
       const L = u.sun;
       const V = normalize(cameraPosition.sub(positionWorld));
+      const ndl0 = dot(nW0, L);
       const ndl = dot(nW, L);
-      const diff = sst(-0.08, 0.35, ndl).mul(max(ndl, 0.0).mul(0.6).add(0.4));
+      const diff = sst(-0.06, 0.28, ndl0).mul(max(ndl, 0.0).mul(0.75).add(0.25));
+      const sky = vec3(0.012, 0.022, 0.045).mul(sst(-0.15, 0.4, ndl0)).mul(u.density);
       const H = normalize(L.add(V));
       const water = float(1.0).sub(land).mul(float(1.0).sub(iceMask));
-      const fres = pow(float(1.0).sub(max(dot(nW, V), 0.0)), 5.0).mul(0.9).add(0.02);
-      const glint = pow(max(dot(nW, H), 0.0), 600.0).mul(5.0).add(pow(max(dot(nW, H), 0.0), 60.0).mul(0.12)).mul(water).mul(fres.mul(4.0).add(0.2)).mul(sst(0.0, 0.1, ndl));
-      // clouds: zonally stretched, domain-warped, eroded into wisps
+      const fres = pow(float(1.0).sub(max(dot(nW0, V), 0.0)), 5.0).mul(0.9).add(0.02);
+      const glint = pow(max(dot(nW0, H), 0.0), 1400.0).mul(1.4).mul(water).mul(fres.mul(4.0).add(0.25)).mul(sst(0.0, 0.08, ndl0));
+      // ---- clouds: cyclonic, zonal streets, eroded wisps, with shadows on the surface ----
       const ct = u.cloudT;
-      const cp = n.mul(vec3(3.0, 6.5, 3.0));
-      const w1 = mx_noise_float(cp.mul(0.6).add(vec3(ct.mul(0.03), 0, 0)));
-      const w2 = mx_noise_float(cp.mul(0.6).add(vec3(7.0, ct.mul(0.02), 3.0)));
-      const warped = cp.add(vec3(w1, w2.mul(0.5), w2).mul(1.4));
-      const cn = mx_fractal_noise_float(warped.add(vec3(ct.mul(0.04), 0, 0)), 6, 2.2, 0.55);
-      const erode = mx_noise_float(n.mul(46.0).add(vec3(0, ct.mul(0.05), 0))).mul(0.16);
-      const band = sst(0.0, 0.1, absLat).mul(-0.12).add(sst(0.08, 0.0, absLat).mul(0.18)).add(sst(0.5, 0.7, absLat).mul(0.14)).add(sst(0.22, 0.3, absLat).mul(sst(0.4, 0.3, absLat)).mul(-0.1));
-      const cov = cn.add(band).add(u.clouds.sub(0.5).mul(0.7)).sub(erode);
-      const cloud = sst(0.08, 0.42, cov).mul(sst(0.0, 0.15, u.clouds)).mul(0.85);
+      const cloudAt = (pp: N, oct: number): N => {
+        let q = pp;
+        // three slow cyclones twist the domain (Rodrigues rotation about their axes)
+        for (const [ax, ay, az, k] of [[0.62, 0.52, 0.58, 1.6], [-0.4, -0.55, 0.73, -1.4], [0.1, 0.35, -0.93, 1.3], [-0.7, 0.45, -0.3, 1.2]] as const) {
+          const kv = normalize(vec3(ax, ay, az));
+          const dd = max(float(1.0).sub(dot(q, kv)), 0.0);
+          const th = exp(dd.mul(-110.0)).mul(k);
+          const c0 = cos(th), s0 = sin(th);
+          q = q.mul(c0).add(cross(kv, q).mul(s0)).add(kv.mul(dot(kv, q)).mul(float(1.0).sub(c0)));
+        }
+        const cp = q.mul(vec3(3.0, 6.0, 3.0));
+        const w1 = mx_noise_float(cp.mul(0.55).add(vec3(ct.mul(0.03), 0, 0)));
+        const w2 = mx_noise_float(cp.mul(0.55).add(vec3(7.0, ct.mul(0.02), 3.0)));
+        const warped = cp.add(vec3(w1, w2.mul(0.5), w2).mul(1.3));
+        const cn = mx_fractal_noise_float(warped.add(vec3(ct.mul(0.04), 0, 0)), oct, 2.2, 0.56);
+        const streets = mx_noise_float(q.mul(vec3(30.0, 70.0, 30.0))).mul(0.08);
+        const erode = mx_noise_float(q.mul(52.0).add(vec3(0, ct.mul(0.05), 0))).mul(0.17);
+        const al = abs(asin(clamp(q.y, -1.0, 1.0))).div(Math.PI / 2);
+        const band = sst(0.0, 0.1, al).mul(-0.12).add(sst(0.08, 0.0, al).mul(0.16)).add(sst(0.5, 0.7, al).mul(0.14)).add(sst(0.22, 0.3, al).mul(sst(0.4, 0.3, al)).mul(-0.12));
+        return cn.add(band).add(u.clouds.sub(0.5).mul(0.7)).sub(erode).add(streets);
+      };
+      const cov = cloudAt(n, 6);
+      const cloud = sst(0.1, 0.48, cov).mul(sst(0.0, 0.15, u.clouds)).mul(0.9);
+      const covS = cloudAt(normalize(n.add(u.sunLocal.mul(0.012))), 4);
+      const shadow = float(1.0).sub(sst(0.1, 0.48, covS).mul(sst(0.0, 0.15, u.clouds)).mul(0.55));
       const sunCol = vec3(1.0, 0.97, 0.92).mul(1.55);
-      const surf = albedo.mul(diff).mul(sunCol).add(glint.mul(sunCol));
-      const cloudLit = vec3(0.86, 0.86, 0.88).mul(diff.mul(0.95).add(0.02)).mul(sunCol).mul(mix(float(1.0), float(0.55), u.smog));
-      let col = mix(surf, cloudLit, cloud.mul(0.92));
+      const surf = albedo.mul(diff.mul(shadow)).mul(sunCol).add(albedo.mul(sky)).add(glint.mul(sunCol).mul(shadow));
+      const cloudThick = sst(0.2, 0.8, cov);
+      const cloudLit = mix(vec3(0.62, 0.64, 0.68), vec3(0.95, 0.95, 0.96), cloudThick).mul(diff.mul(0.96).add(0.015)).mul(sunCol).mul(mix(float(1.0), float(0.55), u.smog));
+      let col = mix(surf, cloudLit, cloud);
       // ---- night side emissive ----
       const night = sst(0.12, -0.18, ndl);
-      const lava = sst(0.74, 0.97, mx_noise_float(n.mul(30.0).add(vec3(0, ct.mul(0.01), 0))).mul(0.5).add(0.5)).mul(u.volcanism).mul(land.mul(0.7).add(0.3));
+      const lava = sst(0.8, 0.98, mx_noise_float(n.mul(18.0).add(vec3(0, ct.mul(0.01), 0))).mul(0.5).add(0.5)).mul(u.volcanism).mul(land.mul(0.7).add(0.3));
       const trapsD = dot(n, u.trapsDir);
       const traps = sst(0.965, 0.995, trapsD).mul(u.traps).mul(sst(0.3, 0.9, mx_noise_float(n.mul(60.0)).mul(0.5).add(0.5)).add(0.25));
       const craterGlow = sst(0.06, 0.0, crat).mul(u.bombardment).mul(0.6);
@@ -339,7 +368,7 @@ export class PlanetStage extends Stage {
       const hitP = tp.x.greaterThan(0.0);
       const t1 = select(hitP, tp.x, ta.y);
       const at = scatter(ro, rd, t0, t1, atmoU, 14, 5);
-      return vec4(at.inscatter.mul(u.exposure), 1.0);
+      return vec4(at.inscatter.mul(u.exposure).mul(u.limb), 1.0);
     })();
     return mat;
   }
@@ -375,7 +404,7 @@ export class PlanetStage extends Stage {
       build: (at) => {
         const warm = vec3(1.0, 0.82, 0.62);
         const cool = vec3(0.7, 0.82, 1.0);
-        const col = mix(warm, cool, at.b.x).mul(at.a.w.mul(5.0).add(0.15)).mul(0.9);
+        const col = mix(warm, cool, at.b.x).mul(at.a.w.mul(5.0).add(0.15)).mul(this.u.stars);
         return { center: at.a.xyz, size: at.a.w.mul(2.2).add(0.9), color: col };
       },
     });
@@ -426,6 +455,8 @@ export class PlanetStage extends Stage {
     const sa = P.sunAz * DEG;
     const se = P.sunEl * DEG;
     (u.sun.value as THREE.Vector3).set(Math.sin(sa) * Math.cos(se), Math.sin(se), Math.cos(sa) * Math.cos(se)).normalize();
+    (u.sunLocal.value as THREE.Vector3).copy(u.sun.value as THREE.Vector3).applyQuaternion(q.clone().invert());
+    u.stars.value = Number(p.stars ?? 0.18);
     u.time.value = f.time;
     u.cloudT.value = f.time * 1.0 + (f.T > -1e6 ? 0 : 0);
     // fate-driven appearance
@@ -454,10 +485,10 @@ export class PlanetStage extends Stage {
     // moon: closer and larger in deep time
     this.moon.visible = P.moon > 0.01;
     if (this.moon.visible) {
-      const dist = lerp(14, 34, smoothstep(-4e9, -1e9, f.T));
-      const ma = (P.sunAz - 120) * DEG;
-      this.moon.position.set(Math.sin(ma) * dist, 2.5, Math.cos(ma) * dist - 6);
-      this.moon.scale.setScalar(lerp(1.6, 1.0, smoothstep(-4e9, -1e9, f.T)));
+      // closer (and larger) in deep time
+      const k = lerp(0.7, 1.0, smoothstep(-4e9, -1e9, f.T));
+      this.moon.position.set(Number(p.moonX ?? -3.4) / k, Number(p.moonY ?? 1.5) / k, Number(p.moonZ ?? -9) / k);
+      this.moon.scale.setScalar(1.25);
     }
     // stars attached to camera position so they never parallax
     this.stars.position.copy(this.camera.position);
