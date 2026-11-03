@@ -101,6 +101,8 @@ export class PlanetStage extends Stage {
     trapsDir: uniform(new THREE.Vector3(0, 1, 0)),
     nightBoost: uniform(1),
     sunLocal: uniform(new THREE.Vector3(1, 0, 0)),
+    speckle: uniform(1),
+    speckleLo: uniform(0.72),
     stars: uniform(0.2),
     limb: uniform(1.6),
     exposure: uniform(1),
@@ -379,7 +381,15 @@ export class PlanetStage extends Stage {
       // ejecta blanket: dark scorched ground inside the curtain
       albedoScorch.assign(sst(u.curtain, u.curtain.mul(0.5), ang).mul(u.crater));
       const glowLava = vec3(1.0, 0.24, 0.04).mul(lava.mul(0.7).add(traps.mul(4.0)).add(craterGlow).add(fire.mul(2.5))).add(impactGlow);
-      const city = texture(lights, uvE).rgb;
+      // night-side emissive layer: a density field broken into points of light (fires, villages, cities)
+      const dens = texture(lights, uvE).rgb;
+      const sp1 = sst(u.speckleLo, 1.0, vnoise(n.mul(140.0), 'a').mul(0.5).add(0.5));
+      const sp2 = sst(u.speckleLo.add(0.05), 1.0, vnoise(n.mul(420.0).add(7.0), 'a').mul(0.5).add(0.5));
+      const speck = mix(float(1.0), sp1.mul(0.7).add(sp2.mul(1.4)), u.speckle);
+      // people cluster along coasts and rivers: weight by proximity to the sea and a clustering field
+      const coastal = sst(0.55, 0.0, cont).mul(0.75).add(0.25);
+      const cluster = sst(0.35, 0.85, vnoise(n.mul(22.0), 'g').mul(0.5).add(0.5));
+      const city = dens.mul(speck).mul(mix(float(1.0), coastal.mul(cluster).mul(2.2), u.speckle));
       const emis = glowLava.mul(night.mul(0.85).add(0.15)).add(city.mul(night).mul(u.nightBoost).mul(float(1.0).sub(cloud.mul(0.6))));
       // impact winter: soot veil
       col = mix(col, vec3(0.05, 0.045, 0.04).mul(diff), u.impactWinter.mul(0.85));
@@ -528,7 +538,12 @@ export class PlanetStage extends Stage {
     const d = this.lightsData;
     for (let y = 0; y < 180; y++)
       for (let x = 0; x < 360; x++) {
-        const c = sample(Math.floor((x / 360) * w), Math.floor((y / 180) * h));
+        const fx = ((x + 0.5) / 360) * w - 0.5, fy = ((y + 0.5) / 180) * h - 0.5;
+        const x0 = Math.floor(fx), y0 = Math.max(0, Math.floor(fy));
+        const tx = fx - x0, ty = fy - y0;
+        const xa = ((x0 % w) + w) % w, xb = (xa + 1) % w, yb = Math.min(h - 1, y0 + 1);
+        const c00 = sample(xa, y0), c10 = sample(xb, y0), c01 = sample(xa, yb), c11 = sample(xb, yb);
+        const c = [0, 1, 2].map((k) => (c00[k]! * (1 - tx) + c10[k]! * tx) * (1 - ty) + (c01[k]! * (1 - tx) + c11[k]! * tx) * ty) as [number, number, number];
         // texture row 0 = south (uv.y = 0 at lat −90)
         const i = ((179 - y) * 360 + x) * 4;
         d[i] = Math.min(255, c[0] * 255);
