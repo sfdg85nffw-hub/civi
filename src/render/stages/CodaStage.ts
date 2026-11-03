@@ -138,7 +138,7 @@ export class CodaStage extends Stage {
         const ang = at.b.w.add(u.time.mul(w).mul(0.25));
         const p = at.a.xyz.add(t1.mul(cos(ang).mul(r))).add(t2.mul(sin(ang).mul(r))).add(ax.mul(sin(ang.mul(3.0).add(at.l.y.mul(9.0))).mul(r).mul(0.04)));
         const alive = at.l.z;
-        const col = vec3(u.victor).mul(alive).mul(u.swarm).mul(at.l.y.mul(0.8).add(0.4)).mul(0.5);
+        const col = vec3(u.victor).mul(alive).mul(u.swarm).mul(at.l.y.mul(0.8).add(0.4)).mul(0.22);
         return { center: p, size: float(0.012), color: col };
       },
     });
@@ -272,7 +272,8 @@ export class CodaStage extends Stage {
       const L = vac ? 0 : clamp01((this.bhDeath[i]! - c) / 2.5);
       v.copy(this.bhPos[i]!).project(cam);
       const r = (0.07 * (i === 0 ? 1.6 : 1) * 14 * 0.5) / Math.max(0.01, this.bhPos[i]!.distanceTo(cam.position)) / Math.tan((cam.fov * Math.PI) / 360) * 0.5;
-      arr.set([v.x * 0.5 + 0.5, v.y * 0.5 + 0.5, r, v.z < 1 ? L : 0], i * 4);
+      // screenUV has its origin at the top-left
+      arr.set([v.x * 0.5 + 0.5, 0.5 - v.y * 0.5, r, v.z < 1 ? L : 0], i * 4);
       for (let k = 0; k < per; k++) life[(i * per + k) * 4 + 2] = L > 0 ? Math.min(1, L * 1.6) : 0;
     }
     this.bhAttr.needsUpdate = true;

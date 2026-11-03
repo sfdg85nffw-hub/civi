@@ -18,7 +18,7 @@ export function codaShots(merged: boolean, vacuum = false): ShotDef[] {
       id: 'cd-saturate', stage: 'galaxy', dur: CODA.candles - CODA.saturate, label: 'Victory is not celebrated',
       transition: { type: 'dissolve', dur: 1.2 },
       rig: merged
-        ? orbit({ center: [0, 0, 0], radius: 120, radiusTo: 112, elev: 0.62, elevTo: 0.6, az: 0.5, azTo: 0.56, fov: 36, ease: easeInOutSine })
+        ? orbit({ center: [0, 0, 0], radius: 78, radiusTo: 72, elev: 0.62, elevTo: 0.6, az: 0.5, azTo: 0.56, fov: 36, ease: easeInOutSine })
         : orbit({ center: [0, 0, 0], radius: 70, radiusTo: 64, elev: 0.75, elevTo: 0.72, az: 0.4, azTo: 0.45, fov: 36, ease: easeInOutSine }),
       params: { coda: 'saturate', c0: CODA.saturate, territory: 0.4, su: 0.9 },
     },

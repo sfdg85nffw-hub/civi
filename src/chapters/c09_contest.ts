@@ -61,7 +61,7 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
   const ranked = beats.map((b, i) => ({ b, i, s: b.w + (i === 0 ? 1 : 0) + (b.ev.type === 'vacuum' ? 2 : 0) + (i === beats.length - 1 ? 0.6 : 0) }));
   ranked.sort((a, b) => b.s - a.s || a.i - b.i);
   const chosen = ranked.slice(0, K).sort((a, b) => a.i - b.i).map((r) => r.b);
-  const duration = Math.max(45, Math.min(58, 38 + chosen.length * 2));
+  const duration = Math.max(45, Math.min(52, 38 + chosen.length * 1.5));
 
   const keys: Keyframe[] = [[0, 1e9]];
   const shots: ShotDef[] = [];

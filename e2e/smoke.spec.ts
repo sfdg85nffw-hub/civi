@@ -29,3 +29,26 @@ test('deep links into every chapter render without errors', async ({ page }) => 
   }
   expect(errors).toEqual([]);
 });
+
+test('the Return saves the spark, and the next run opens with it', async ({ page }) => {
+  test.setTimeout(1_500_000);
+  const errors = collectErrors(page);
+  // C0FFEE ends in vacuum decay (white spark); 1234ABCD ends with a victor
+  for (const seed of ['C0FFEE', '1234ABCD']) {
+    await page.goto(`/?backend=webgl&capture=1&res=320x180&chapter=10&shot=6&su=0.6&nocard=1&warm=3&mute=1&quality=low&seed=${seed}`);
+    await page.evaluate(() => localStorage.removeItem('deep-time.spark'));
+    await waitReady(page, 420_000);
+    await page.evaluate(() => (window as any).__deeptime.run(6));
+    await page.evaluate(() => (window as any).__deeptime.frames(6));
+    const saved = await page.evaluate(() => localStorage.getItem('deep-time.spark'));
+    const outcome = await page.evaluate(() => (window as any).__deeptime.state().outcome);
+    console.log(`seed ${seed}: ${outcome}, spark ${saved}`);
+    expect(saved).toMatch(/^#[0-9a-f]{6}$/);
+    if (outcome === 'vacuum') expect(saved).toBe('#ffffff');
+    else expect(saved).not.toBe('#ffffff');
+    // a fresh load keeps it for the next run's first frame
+    await page.goto('/?backend=webgl&res=320x180');
+    expect(await page.evaluate(() => localStorage.getItem('deep-time.spark'))).toBe(saved);
+  }
+  expect(errors).toEqual([]);
+});

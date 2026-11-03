@@ -109,7 +109,11 @@ export class GalaxyStage extends Stage {
     const r = length(off);
     const along = dot(off, u.sep);
     const tidal = u.sep.mul(along.mul(u.tidal).mul(sst(4.0, 14.0, r)));
-    const dir = normalize(vec3(sin(seed.mul(91.7)), cos(seed.mul(53.3)).mul(0.8), sin(seed.mul(27.1).add(1.3))));
+    // an isotropic direction from two decorrelated hashes of the star's seed
+    const th = fract(seed.mul(9187.31)).mul(6.2832);
+    const zz = fract(seed.mul(4273.13)).mul(2.0).sub(1.0);
+    const rr = float(1.0).sub(zz.mul(zz)).max(0.0).sqrt();
+    const dir = vec3(rr.mul(cos(th)), zz.mul(0.7), rr.mul(sin(th)));
     const puffed = mix(off, dir.mul(r.mul(0.75)), u.puff.mul(sst(1.0, 6.0, r)));
     const o2 = select(isMW, puffed.add(tidal), off);
     return c.add(o2);
@@ -135,11 +139,11 @@ export class GalaxyStage extends Stage {
 
   private farGalaxies(): THREE.Object3D {
     const rng = new Rng(0xfa7, 3);
-    const n = 1400;
+    const n = 700;
     const a = new Float32Array(n * 4), b = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
-      const v = new THREE.Vector3(rng.normal(), rng.normal(), rng.normal()).normalize().multiplyScalar(rng.range(4000, 60000));
-      a.set([v.x, v.y, v.z, rng.range(4, 30)], i * 4);
+      const v = new THREE.Vector3(rng.normal(), rng.normal(), rng.normal()).normalize().multiplyScalar(rng.range(3000, 30000));
+      a.set([v.x, v.y, v.z, rng.range(6, 40)], i * 4);
       b.set([rng.next(), rng.next(), rng.next(), rng.next()], i * 4);
     }
     const u = this.u;
@@ -154,8 +158,10 @@ export class GalaxyStage extends Stage {
         const tOut = at.b.w.mul(4.6).add(3.9);
         const k = select(u.codaC.lessThan(0.0), float(0.0), sst(tOut.sub(0.9), tOut, u.codaC));
         const base = mix(vec3(1.0, 0.82, 0.6), vec3(0.7, 0.8, 1.0), at.b.x);
-        const col = mix(base, vec3(1.0, 0.12, 0.03), sst(0.0, 0.6, k)).mul(float(1.0).sub(k)).mul(0.35).mul(flux).mul(u.fade);
-        return { center: at.a.xyz, size: s, color: col, rotation: at.b.z.mul(6.28) };
+        // a whole galaxy's light in a pixel or two: give the candles a visible minimum
+        const lum = flux.max(0.035).mul(select(u.codaC.greaterThan(0.0), float(2.2), float(1.0)));
+        const col = mix(base, vec3(1.0, 0.12, 0.03), sst(0.0, 0.6, k)).mul(float(1.0).sub(k)).mul(0.6).mul(lum).mul(u.fade);
+        return { center: at.a.xyz, size: s.max(at.a.xyz.length().mul(2.2).div(u.focalPx)), color: col, rotation: at.b.z.mul(6.28) };
       },
     });
   }
