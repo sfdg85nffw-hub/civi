@@ -140,7 +140,9 @@ export class PostFX {
       const p = uv();
       const a = texA.sample(p).rgb.mul(this.uExposure);
       const b = texB.sample(p).rgb.mul(this.uExposureB);
-      return vec4(mix(a, b, uMix), 1.0);
+      const m = mix(a, b, uMix);
+      const ok = m.x.equal(m.x).and(m.y.equal(m.y)).and(m.z.equal(m.z));
+      return vec4(select(ok, min(m, vec3(64.0)), vec3(0.0)), 1.0);
     })();
     this.bloomNode = bloom(bloomInput, 0.6, 0.55, 0.0);
     this.bloomNode.strength = this.uBloomStrength;
@@ -148,6 +150,9 @@ export class PostFX {
 
     const hdr = Fn(() => {
       const c = composite.add(this.bloomNode.rgb).toVar();
+      // guard: a single non-finite pixel must never white out a frame through the bloom/tonemap chain
+      const finite = c.x.equal(c.x).and(c.y.equal(c.y)).and(c.z.equal(c.z));
+      c.assign(select(finite, min(c, vec3(256.0)), vec3(0.0)));
       // flash (additive, pre-tonemap so it blooms naturally into white)
       c.addAssign(vec3(this.uFlashColor).mul(this.uFlash));
       // gentle saturation control (pre-tonemap, luminance preserving)

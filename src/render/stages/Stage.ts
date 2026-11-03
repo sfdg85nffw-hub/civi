@@ -14,6 +14,8 @@ export abstract class Stage {
   /** last frame this stage was updated (to detect fresh activation) */
   lastFrame = -10;
   /** per-stage post settings (bloom strength / threshold, exposure) */
+  private projNear = -1;
+  private projFar = -1;
   post = { bloom: 0.6, threshold: 0.0, exposure: 1.0, grain: 0.035, vignette: 0.32, chroma: 0.0025 };
 
   /** Build geometry/materials. Called lazily before first use (and for pre-warm). */
@@ -35,10 +37,12 @@ export abstract class Stage {
     c.up.set(0, 1, 0);
     c.lookAt(p.target);
     if (p.roll) c.rotateZ(p.roll);
-    if (c.fov !== p.fov || c.aspect !== aspect) {
+    if (c.fov !== p.fov || c.aspect !== aspect || c.near !== this.projNear || c.far !== this.projFar) {
       c.fov = p.fov;
       c.aspect = aspect;
       c.updateProjectionMatrix();
+      this.projNear = c.near;
+      this.projFar = c.far;
     }
   }
 }

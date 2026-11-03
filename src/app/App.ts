@@ -27,6 +27,11 @@ import type { GEvent } from '../galaxy/GalaxySim';
 import { formatEpoch } from '../galaxy/chronicle';
 import { buildContest, contest } from '../chapters/c09_contest';
 import { setGalaxyParticleScale } from '../render/stages/GalaxyStage';
+import { CodaStage } from '../render/stages/CodaStage';
+import { coda, codaShots, CODA } from '../chapters/c10_coda';
+import { MERGED_T } from '../galaxy/universe';
+import { formatDate } from '../time/format';
+import { saveSpark } from './prefs';
 
 export interface DeepLink {
   autostart: boolean;
@@ -226,7 +231,7 @@ export class App {
       this.hud.reveal(3);
     };
     this.hud = new HUD(this.ui, {
-      onPause: () => this.time.togglePause(),
+      onPause: () => (this.phase === 'rest' ? this.newRun() : this.time.togglePause()),
       onSlower: () => this.time.nudgeSpeed(-1),
       onFaster: () => this.time.nudgeSpeed(1),
       onSpeed01: (v) => this.time.setSpeed01(v),
@@ -356,6 +361,7 @@ export class App {
     if (!g.result) return;
     const c = buildContest(g);
     contest.shots = c.shots;
+    coda.shots = codaShots(g.result.endT > MERGED_T, g.result.outcome === 'vacuum');
     const s = this.time.storyTime;
     const T = this.time.T;
     const contestS0 = this.time.odyssey.span(9).s0;
@@ -364,6 +370,71 @@ export class App {
     // keep the viewer at the same moment: story positions before the Contest are unchanged
     if (this.time.mode === 'odyssey') this.time.seekStory(s < contestS0 ? s : this.time.odyssey.s(T));
     this.pendingSeek?.();
+  }
+
+  /**
+   * THE CODA. Silence, saturation, the closing horizon, the last holes, one
+   * point, the montage inside it, five seconds of true black, the Return, the ring.
+   * Returns seconds into the Coda (or −1 outside it).
+   */
+  private updateCoda(chapter: number, s: number, T: number): number {
+    const counter = this.counter ?? (this.counter = Object.assign(document.createElement('div'), { className: 'coda-counter' }));
+    if (!counter.parentElement) this.ui.appendChild(counter);
+    if (chapter !== 10) {
+      counter.classList.remove('on');
+      this.ui.classList.remove('coda-black');
+      if (this.audioOverride.music !== undefined || this.audioOverride.chord !== undefined || this.audioOverride.toneDb !== undefined) this.audioOverride = {};
+      this.stageFade = 1;
+      this.sparkSaved = false;
+      return -1;
+    }
+    const c = s - this.time.odyssey.span(10).s0;
+    const res = this.galaxy.result;
+    const sp = res ? res.spark : [1, 1, 1];
+    const hex = '#' + sp.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
+    if (hex !== this.victorHex) {
+      this.victorHex = hex;
+      const lin = hexToLinear(hex);
+      this.victor.setRGB(lin[0], lin[1], lin[2]);
+    }
+    // sound: silence, the Tone alone, then nothing, then the Tone resolving into the chord
+    let toneDb: number, chord = 0;
+    if (c < CODA.point) toneDb = -46 - 14 * smoothstep(1, 6, c);
+    else if (c < CODA.black) toneDb = -60 + 26 * smoothstep(CODA.point, CODA.point + 1.5, c);
+    else if (c < CODA.ret) toneDb = -120;
+    else {
+      toneDb = -40 + 4 * smoothstep(CODA.ret, CODA.ret + 3, c);
+      chord = smoothstep(CODA.ret + 2.5, CODA.ret + 6.5, c);
+    }
+    this.audioOverride = { music: 0, toneDb, chord };
+    // five seconds of true black and true silence, and no UI at all
+    const black = c >= CODA.black && c < CODA.ret;
+    this.stageFade = black ? 0 : 1;
+    this.ui.classList.toggle('coda-black', black || c < CODA.ret);
+    this.chronicle.clear();
+    // the counter blurs through the end of stars and holes
+    const showCounter = c > CODA.candles + 0.3 && c < CODA.point + 0.6;
+    counter.classList.toggle('on', showCounter);
+    if (showCounter) {
+      counter.textContent = formatDate(T, { speed: Math.abs(this.time.speed) });
+      const blur = Math.min(3.5, Math.max(0, Math.log10(Math.max(1, Math.abs(this.time.speed))) - 9) * 0.12);
+      counter.style.filter = `blur(${blur.toFixed(2)}px)`;
+    }
+    // the Return: the spark is now the colour of what was left (white if nothing was)
+    if (c >= CODA.ret) {
+      if (this.sparkHex !== hex) this.setSpark(hex);
+      if (!this.sparkSaved) {
+        saveSpark(hex);
+        this.sparkSaved = true;
+      }
+    }
+    // the ring: the bar fades in and curls until its end meets its beginning
+    this.timeline.curl = smoothstep(CODA.ring, CODA.end - 0.2, c);
+    if (c >= CODA.end - 0.05 && this.phase === 'running' && this.time.mode === 'odyssey') {
+      this.phase = 'rest';
+      this.time.resting = true;
+    }
+    return c;
   }
 
   /** feed the chronicle: terse lines for events just crossed, never a flood */
@@ -401,7 +472,7 @@ export class App {
     this.time.resting = false;
     this.time.mode = 'odyssey';
     this.time.paused = false;
-    this.time.seekStory(this.time.odyssey.span(0).s1 - 1.0);
+    this.time.seekStory(this.time.odyssey.span(0).s1 - 0.3);
     this.director.reset();
     this.phase = 'running';
     this.timeline.curl = 0;
@@ -414,6 +485,7 @@ export class App {
       const f = STAGE_FACTORIES[name];
       if (!f) throw new Error(`Unknown stage ${name}`);
       st = f();
+      if (st instanceof CodaStage) st.source = this.recorder;
       this.stages.set(name, st);
     }
     st.ensureBuilt();
@@ -511,6 +583,7 @@ export class App {
       quality: this.renderer.quality,
       reducedFlash: this.reducedFlash,
       spark: this.spark,
+      victor: this.victor,
       seed: this.seed,
       galaxy: this.galaxy,
       freshStage: false,
@@ -525,13 +598,16 @@ export class App {
 
     // UI
     this.card.update(dt);
-    this.feedChronicle(T, dt);
+    const codaC = this.updateCoda(chapter, s, T);
+    if (codaC < 0) this.feedChronicle(T, dt);
     this.chronicle.update(dt);
     this.time.frontier = this.galaxy.done ? Infinity : Math.max(TAKEOVER_T, this.galaxy.frontier);
     const total = this.time.odyssey.total;
     const hudShown = this.hud.root.classList.contains('show');
     this.timeline.interactive = hudShown;
-    this.timeline.opacity = damp(this.timeline.opacity, hudShown ? 1 : 0, 4, dt);
+    if (codaC >= CODA.ring - 0.5) this.timeline.opacity = smoothstep(CODA.ring - 0.5, CODA.ring + 0.8, codaC);
+    else if (codaC >= 0) this.timeline.opacity = 0;
+    else this.timeline.opacity = damp(this.timeline.opacity, hudShown ? 1 : 0, 4, dt);
     this.timeline.update(s / total, this.galaxy.done ? null : this.time.odyssey.s(Math.max(TAKEOVER_T, this.galaxy.frontier)) / total);
     this.hud.update(dt, {
       T,
@@ -644,6 +720,11 @@ export class App {
   private flashEnv = 0;
   private silenceUntil = -1;
   private lastChronT = -1e12;
+  /** Coda */
+  readonly victor = new THREE.Color(1, 1, 1);
+  private victorHex = '#ffffff';
+  private sparkSaved = false;
+  private counter: HTMLDivElement | null = null;
   /** capture mode: frames still allowed to advance time after ready */
   private runFrames = 0;
 

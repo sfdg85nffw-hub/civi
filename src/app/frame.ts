@@ -27,6 +27,8 @@ export interface FrameContext {
   reducedFlash: boolean;
   /** spark colour, linear RGB */
   spark: THREE.Color;
+  /** Coda: the colour of whatever is left (linear RGB) */
+  victor: THREE.Color;
   seed: number;
   /** Regime B history (null before it exists) */
   galaxy: GalaxyHost | null;

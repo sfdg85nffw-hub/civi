@@ -47,14 +47,14 @@ export const expansion: ChapterDef = {
     {
       id: 'ex-neighbours', stage: 'galaxy', dur: 8, label: 'Neighbours', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: zoomRig({ t0: [0, 0, 0], t1: mid, d0: 70, d1: 1350, dir0: [-0.3, 0.75, 0.6], dir1: side, fov: 36, fovTo: 40 }),
-      params: { su: 0.8, starGain: 1.2 },
+      rig: zoomRig({ t0: [0, 0, 0], t1: mid, d0: 70, d1: 980, dir0: [-0.3, 0.75, 0.6], dir1: side, fov: 36, fovTo: 46 }),
+      params: { su: 0.8 },
     },
     {
       id: 'ex-quiet', stage: 'galaxy', dur: 4, label: 'Quiet',
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: zoomRig({ t0: mid, t1: mid, d0: 1350, d1: 1250, dir0: side, dir1: [0.8, 0.38, 0.6], fov: 40, ease: (u) => u }),
-      params: { su: 0.5, starGain: 1.2 },
+      rig: zoomRig({ t0: mid, t1: mid, d0: 980, d1: 900, dir0: side, dir1: [0.8, 0.38, 0.6], fov: 46, ease: (u) => u }),
+      params: { su: 0.5 },
     },
   ],
 };

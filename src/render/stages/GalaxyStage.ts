@@ -53,6 +53,9 @@ export class GalaxyStage extends Stage {
     saturate: uniform(0),
     satColor: uniform(new THREE.Vector3(1, 1, 1)),
     fade: uniform(1),
+    /** Coda: seconds into the Coda (−1 before it), per-galaxy saturation flags */
+    codaC: uniform(-1),
+    satGal: uniformArray(Array.from({ length: 5 }, () => new THREE.Vector4()), 'vec4'),
   };
   private uni!: Universe;
   private nodeState!: THREE.InstancedBufferAttribute;
@@ -141,7 +144,11 @@ export class GalaxyStage extends Stage {
       softness: 2.5,
       build: (at) => {
         const [s, flux] = this.pxSize(at.a.xyz, at.a.w);
-        const col = mix(vec3(1.0, 0.82, 0.6), vec3(0.7, 0.8, 1.0), at.b.x).mul(0.35).mul(flux).mul(u.fade);
+        // the horizon closes: each distant galaxy reddens and goes out, one by one
+        const tOut = at.b.w.mul(4.6).add(3.9);
+        const k = select(u.codaC.lessThan(0.0), float(0.0), sst(tOut.sub(0.9), tOut, u.codaC));
+        const base = mix(vec3(1.0, 0.82, 0.6), vec3(0.7, 0.8, 1.0), at.b.x);
+        const col = mix(base, vec3(1.0, 0.12, 0.03), sst(0.0, 0.6, k)).mul(float(1.0).sub(k)).mul(0.35).mul(flux).mul(u.fade);
         return { center: at.a.xyz, size: s, color: col, rotation: at.b.z.mul(6.28) };
       },
     });
@@ -154,7 +161,9 @@ export class GalaxyStage extends Stage {
     const A = new Float32Array(n * 4), B = new Float32Array(n * 4);
     let k = 0;
     for (let g = 0; g < 5; g++) {
-      const G = GALAXIES[g]!;
+      // the stars use a more open, two-armed reading of the same spiral (minor arms fainter)
+      const G0 = GALAXIES[g]!;
+      const G = g === 0 ? { ...G0, pitch: G0.pitch * 1.18, arms: G0.arms.map((a) => ({ ...a, strength: a.strength < 0.9 ? 0.38 : 1 })) } : G0;
       const R = galaxyRotation(g);
       for (let i = 0; i < counts[g]!; i++) {
         let x = 0, y = 0, z = 0, temp = 0.5, lum = 1, kind = 0;
@@ -167,7 +176,7 @@ export class GalaxyStage extends Stage {
           y = r * ct * 0.62;
           z = r * st * Math.sin(ph);
           temp = rng.range(0.0, 0.3);
-          lum = 0.6 + rng.next() * 0.8;
+          lum = 0.3 + rng.next() * 0.45;
           kind = 1;
         } else if (roll < G.bulge * 1.6 + G.bar + 0.02) {
           const bx = rng.normal(0, G.barLen * 0.42), bz = rng.normal(0, G.barLen * 0.13);
@@ -225,7 +234,7 @@ export class GalaxyStage extends Stage {
         const t = at.b.x;
         let col: N = mix(mix(warm, white, sst(0.0, 0.5, t)), blue, sst(0.5, 1.0, t));
         // the victor's colour floods everything it holds (Coda)
-        col = mix(col, u.satColor, u.saturate.mul(0.85));
+        col = mix(col, u.satColor, u.saturate.mul(0.85).mul(u.satGal.element(at.a.w.toInt()).x));
         const vis = this.erased(p).mul(u.fade);
         return { center: p, size: s, color: col.mul(at.b.y).mul(flux).mul(0.16).mul(u.starGain).mul(vis) };
       },
@@ -356,7 +365,7 @@ export class GalaxyStage extends Stage {
         sum += Math.hypot(un.lx[i]! - un.lx[j]!, un.ly[i]! - un.ly[j]!, un.lz[i]! - un.lz[j]!);
         c++;
       }
-      Bz[i * 4] = Math.min(0.9, Math.max(0.28, (c ? sum / c : 0.3) * 2.0));
+      Bz[i * 4] = Math.min(2.2, Math.max(0.6, (c ? sum / c : 0.3) * 4.2));
     }
     this.stateArr = new Float32Array(n * 4).fill(-1);
     const u = this.u;
@@ -387,7 +396,8 @@ export class GalaxyStage extends Stage {
               const wp = p.add(u.camRight.mul(q.x.mul(s).mul(0.5))).add(u.camUp.mul(q.y.mul(s).mul(0.5)));
               const style = fc.w;
               const r = length(q);
-              const fall = float(1.0).sub(r.mul(r)).max(0.0).pow(2.0);
+              // broad gaussians: many overlap, so their sum is a smooth field
+              const fall = exp(r.mul(r).mul(-4.0)).sub(0.018).max(0.0);
               const xz = vec2(wp.x, wp.z).add(vec2(wp.y.mul(0.5), wp.y.mul(-0.3)));
               const k = 7.0;
               const pat = float(0.0).toVar();
@@ -438,10 +448,14 @@ export class GalaxyStage extends Stage {
               const w1 = sin(dot(xz, vec2(31.0, 17.0)).add(u.time.mul(3.0)));
               const w2 = sin(dot(xz, vec2(-13.0, 29.0)).sub(u.time.mul(2.3)));
               const moire = sst(0.3, 1.0, w1.mul(w2).abs()).mul(contested);
+              // lattice lines fade where they would alias (far views keep only the tint)
+              const fw = T.fwidth(xz.x.mul(k)).add(T.fwidth(xz.y.mul(k)));
+              const crisp = sst(0.6, 0.15, fw);
+              const pv = mix(float(0.18), pat, crisp);
               // the interior keeps a faint lattice; the front draws it in light as it advances
-              const base = pat.mul(0.05).add(0.0005);
-              const front = glow.mul(pat.mul(0.9).add(0.04));
-              return fall.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.3))).add(moire.mul(0.12)));
+              const base = pv.mul(0.012).add(0.0022);
+              const front = glow.mul(pv.mul(0.07).add(0.012));
+              return fall.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.3))).add(moire.mul(0.03)));
             })(),
         };
       },
@@ -541,7 +555,22 @@ export class GalaxyStage extends Stage {
     (u.camUp.value as THREE.Vector3).setFromMatrixColumn(cam.matrixWorld, 1);
     const p = shot.def.params ?? {};
     u.territory.value = Number(p.territory ?? 1);
-    u.starGain.value = Number(p.starGain ?? 1);
+    // the eye adapts: whole galaxies seen from far away are allowed to be bright
+    const camD = this.camera.position.length();
+    u.starGain.value = Number(p.starGain ?? 1) * (1 + 1.6 * Math.min(1, Math.max(0, (camD - 150) / 700)));
+    const coda = String(p.coda ?? '');
+    const victor = (f as FrameContext & { victor?: THREE.Color }).victor;
+    if (coda) {
+      const c = Number(p.c0 ?? 0) + shot.t;
+      // in the vacuum ending there are no candles: there is nothing left to go out
+      u.codaC.value = p.vacuum ? 100 : c;
+      // the victor's colour floods every galaxy it holds, as a slow wave
+      u.saturate.value = smoothstep01((c - 0.3) / 2.6);
+      if (victor) (u.satColor.value as THREE.Vector3).set(victor.r, victor.g, victor.b);
+    } else {
+      u.codaC.value = -1;
+      u.saturate.value = 0;
+    }
     const host = (f as FrameContext & { galaxy?: GalaxyHost | null }).galaxy ?? null;
     if (!host) return;
     host.seek(T0);
@@ -550,8 +579,21 @@ export class GalaxyStage extends Stage {
       if (i >= MAXF) return;
       (u.fcol.array[i] as THREE.Vector4).set(fi.color[0], fi.color[1], fi.color[2], VIS_INDEX[fi.visual] ?? 0);
     });
+    if (coda) {
+      // which galaxies does the victor hold?
+      const vid = host.result?.victor ?? -1;
+      const cnt = [0, 0, 0, 0, 0];
+      if (vid >= 0) for (let i = 0; i < this.uni.n; i++) if (host.owner[i] === vid) cnt[this.uni.gal[i]!]!++;
+      for (let g = 0; g < 5; g++) (u.satGal.array[g] as THREE.Vector4).set(cnt[g]! > this.uni.galCount[g]! * 0.25 ? 1 : 0, 0, 0, 0);
+    }
     this.updateNodes(host, f);
     this.updateEvents(host, f);
+    if (coda) {
+      // the war is over: nothing moves
+      (this.streakMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
+      (this.flareMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
+      this.bubble.visible = false;
+    }
   }
 
   private updateNodes(host: GalaxyHost, f: FrameContext): void {
@@ -646,7 +688,7 @@ export class GalaxyStage extends Stage {
       const R = ((T0 - vac.t) / KPC_LY);
       (this.u.vacC.value as THREE.Vector3).set(P0[0], P0[1], P0[2]);
       this.u.vacR.value = R;
-      this.bubble.visible = R > 0;
+      this.bubble.visible = R > 0 && R < 3000;
       this.bubble.position.set(P0[0], P0[1], P0[2]);
       this.bubble.scale.setScalar(Math.max(0.01, R));
     } else {
@@ -660,3 +702,8 @@ export class GalaxyStage extends Stage {
 void clamp;
 void floor;
 void uniform;
+
+function smoothstep01(x: number): number {
+  const t = Math.min(1, Math.max(0, x));
+  return t * t * (3 - 2 * t);
+}

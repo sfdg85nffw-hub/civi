@@ -35,7 +35,7 @@ export const CHAPTERS: readonly ChapterMeta[] = [
   { id: 7, key: 'singularity', title: 'The Singularity', cardDate: '2026 CE', cardLine: 'We built a mind.', T0: 0, T1: TAKEOVER_T, budget: 30, lodThreshold: 1.5, regime: 'A' },
   { id: 8, key: 'expansion', title: 'Expansion', cardDate: '+50 YEARS', cardLine: 'It did not stop at the Sun.', T0: TAKEOVER_T, T1: CONTEST_T0, budget: 25, lodThreshold: 2e4, regime: 'B' },
   { id: 9, key: 'contest', title: 'The Contest', cardDate: '+1 BILLION YEARS', cardLine: 'It was not alone.', T0: CONTEST_T0, T1: 6e10, budget: 45, lodThreshold: 2e6, regime: 'B' },
-  { id: 10, key: 'coda', title: 'Coda', cardDate: '', cardLine: '', T0: 6e10, T1: 1e100, budget: 35, lodThreshold: 0, regime: 'B' },
+  { id: 10, key: 'coda', title: 'Coda', cardDate: '', cardLine: '', T0: 6e10, T1: 1e100, budget: 37, lodThreshold: 0, regime: 'B' },
 ];
 
 export function chapterAtT(T: number): ChapterMeta {

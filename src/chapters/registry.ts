@@ -13,6 +13,8 @@ import { FireStage } from '../render/stages/FireStage';
 import { CaveStage } from '../render/stages/CaveStage';
 import { SolarStage } from '../render/stages/SolarStage';
 import { GalaxyStage } from '../render/stages/GalaxyStage';
+import { CodaStage } from '../render/stages/CodaStage';
+import { coda } from './c10_coda';
 import { expansion } from './c08_expansion';
 import { contest } from './c09_contest';
 import { singularity } from './c07_singularity';
@@ -35,9 +37,10 @@ export const STAGE_FACTORIES: Record<string, () => Stage> = {
   cave: () => new CaveStage(),
   solar: () => new SolarStage(),
   galaxy: () => new GalaxyStage(),
+  coda: () => new CodaStage(),
 };
 
 const empty = (i: number): ChapterDef => ({ meta: CHAPTERS[i]!, shots: [] });
 
 /** Chapter definitions in order (render side). */
-export const CHAPTER_DEFS: ChapterDef[] = [prologue, microbial, multicellular, animals, hominins, ancient, modern, singularity, expansion, contest, empty(10)];
+export const CHAPTER_DEFS: ChapterDef[] = [prologue, microbial, multicellular, animals, hominins, ancient, modern, singularity, expansion, contest, coda];

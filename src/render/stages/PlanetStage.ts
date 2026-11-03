@@ -475,12 +475,12 @@ export class PlanetStage extends Stage {
         // signals ripple outward from each seed along the lattice
         const pulse = sin(d1.mul(42.0).sub(u.time.mul(4.0))).mul(0.5).add(0.5).pow(8.0);
         const age = sst(0.0, 0.25, front.sub(d1));
-        const lat = l1.mul(0.55).add(l2.mul(0.3)).add(l3.mul(0.16)).add(n1.mul(2.0)).add(n2.mul(0.6));
+        const lat = l1.mul(0.28).add(l2.mul(0.32)).add(l3.mul(0.2)).add(n1.mul(1.3)).add(n2.mul(0.5));
         const frontGlow = exp(abs(d1.sub(front.add(facet))).mul(-260.0)).mul(sst(0.0, 0.05, u.lattice)).mul(sst(0.42, 0.37, u.lattice));
         const seedCore = exp(d1.mul(-40.0)).mul(0.5);
         // denser over the continents it was built on, a fainter mesh across the sea
-        const where = land.mul(0.7).add(0.3);
-        latticeEm.assign(vec3(0.5, 0.72, 1.0).mul(covered.mul(lat.mul(pulse.mul(1.6).add(age.mul(-0.12).add(0.3))).mul(where).add(seam.mul(0.35)).add(seedCore))).mul(0.5).add(vec3(0.8, 0.9, 1.0).mul(frontGlow.mul(0.7))));
+        const where = land.mul(0.85).add(0.15);
+        latticeEm.assign(vec3(0.5, 0.72, 1.0).mul(covered.mul(lat.mul(pulse.mul(1.5).add(age.mul(-0.04).add(0.1))).mul(where).add(seam.mul(0.25)).add(seedCore))).mul(0.4).add(vec3(0.8, 0.9, 1.0).mul(frontGlow.mul(0.35))));
         void n2;
       });
       // human lights die where the lattice has passed
@@ -497,7 +497,8 @@ export class PlanetStage extends Stage {
       const t1 = length(positionWorld.sub(cameraPosition));
       const at = scatter(ro, rd, t0, t1, atmoU, 10, 4);
       // faint moonlight so continents remain legible on the night side
-      col = col.add(albedo.mul(vec3(0.5, 0.6, 0.85)).mul(sst(0.05, -0.25, ndl0)).mul(u.moonlight));
+      // (bright ice is compressed so it reads as moonlit terrain, not a grey cut-out)
+      col = col.add(min(albedo, vec3(0.2)).mul(albedo.add(0.6)).mul(vec3(0.5, 0.6, 0.85)).mul(sst(0.05, -0.25, ndl0)).mul(u.moonlight).mul(cloud.mul(-0.5).add(1.0)));
       const outC = col.mul(at.trans).add(at.inscatter).add(emis.mul(at.trans.mul(0.6).add(0.4)));
       return vec4(outC.mul(u.exposure), 1.0);
     })();

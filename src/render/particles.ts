@@ -16,6 +16,8 @@ export interface ParticleBuild {
   rotation?: N;
   /** optional fragment shape override: function(uvCentred vec2) → mask */
   shape?: (p: N) => N;
+  /** optional full fragment override: function(uvCentred vec2) → vec4 (rgb, alpha) */
+  fragment?: (p: N) => N;
 }
 
 export interface ParticleOptions {
@@ -73,7 +75,7 @@ export function makeParticles(o: ParticleOptions): THREE.Mesh {
   const p = varying(corner.mul(2.0));
   const shape = b.shape ? b.shape(p) : float(1.0).sub(p.dot(p)).max(0.0).pow(o.softness ?? 2.0);
   const additive = (o.blending ?? THREE.AdditiveBlending) === THREE.AdditiveBlending;
-  mat.colorNode = additive ? vec4(vColor.mul(shape).mul(vAlpha), 1.0) : vec4(vColor, shape.mul(vAlpha));
+  mat.colorNode = b.fragment ? b.fragment(p) : additive ? vec4(vColor.mul(shape).mul(vAlpha), 1.0) : vec4(vColor, shape.mul(vAlpha));
   const mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = o.renderOrder ?? 10;

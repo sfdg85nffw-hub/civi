@@ -15,7 +15,7 @@ const waiting: ShotDef[] = [
   {
     id: 'co-wait', stage: 'galaxy', dur: 45, label: 'The Local Group',
     transition: { type: 'dissolve', dur: 1.2 },
-    rig: zoomRig({ t0: LOCAL_GROUP_VIEW.mid, t1: [0, 0, 0], d0: 1300, d1: 60, dir0: LOCAL_GROUP_VIEW.side, dir1: [-0.3, 0.8, 0.5], fov: 40, fovTo: 34 }),
+    rig: zoomRig({ t0: LOCAL_GROUP_VIEW.mid, t1: [0, 0, 0], d0: 1000, d1: 60, dir0: LOCAL_GROUP_VIEW.side, dir1: [-0.3, 0.8, 0.5], fov: 40, fovTo: 34 }),
   },
 ];
 
@@ -94,7 +94,7 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     transition: { type: 'fade', dur: 1.0 },
     rig: firstGal === 0 || firstGal === 1 || firstGal === 2
       ? orbit({ center: [0, 0, 0], radius: 52, radiusTo: 46, elev: 1.0, elevTo: 0.95, az: 0.2, azTo: 0.32, fov: 34, ease: easeInOutSine })
-      : zoomRig({ t0: LOCAL_GROUP_VIEW.mid, t1: LOCAL_GROUP_VIEW.mid, d0: 1400, d1: 1250, dir0: LOCAL_GROUP_VIEW.side, dir1: [0.75, 0.4, 0.62], fov: 40 }),
+      : zoomRig({ t0: LOCAL_GROUP_VIEW.mid, t1: LOCAL_GROUP_VIEW.mid, d0: 1050, d1: 950, dir0: LOCAL_GROUP_VIEW.side, dir1: [0.75, 0.4, 0.62], fov: 44 }),
     params: { su: 0.6 },
   });
   const styles = ['regional', 'galactic', 'grazing', 'regional', 'galactic'];

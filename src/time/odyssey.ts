@@ -44,7 +44,7 @@ export const CHAPTER_KEYS: Record<number, Keyframe[]> = {
   ],
   9: [[0, 1e9], [45, 2.0e10]],
   10: [
-    [0, 2.0e10], [4, 2.0001e10], [9, 1e14], [11, 1e40], [16, 1e100], [35, 1e100],
+    [0, 2.0e10], [3.5, 2.0001e10], [8.5, 1e14], [11.5, 1e40], [15.5, 1e100], [37, 1e100],
   ],
 };
 
@@ -81,7 +81,8 @@ export class Odyssey {
     }
     if (id === 10) {
       const e = this.contestEnd;
-      return [[0, e], [4, e * 1.00005], [9, 1e14], [11, 1e40], [16, 1e100], [35, 1e100]];
+      // saturation holds the moment; then the counter blurs through the end of stars, of holes, of everything
+      return [[0, e], [3.5, e * 1.00005], [8.5, 1e14], [11.5, 1e40], [15.5, 1e100], [37, 1e100]];
     }
     return CHAPTER_KEYS[id]!;
   }
