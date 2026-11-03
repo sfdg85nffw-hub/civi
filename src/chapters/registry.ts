@@ -10,6 +10,7 @@ import { CellStage } from '../render/stages/CellStage';
 import { SeafloorStage } from '../render/stages/SeafloorStage';
 import { LandStage } from '../render/stages/LandStage';
 import { animals } from './c03_animals';
+import './overlays';
 import { multicellular } from './c02_multicellular';
 
 /** Stage factories, created lazily by the App. */

@@ -52,7 +52,7 @@ export class LandStage extends Stage {
     this.fieldTex.magFilter = this.fieldTex.minFilter = THREE.LinearFilter;
     this.fieldTex.generateMipmaps = false;
     this.fieldTex.needsUpdate = true;
-    this.scene.fogNode = fog(vec3(0.05, 0.035, 0.03), densityFogFactor(float(0.07)));
+    this.scene.fogNode = fog(vec3(0.06, 0.035, 0.025), densityFogFactor(float(0.11)));
     this.scene.add(this.sky());
     this.scene.add(this.terrain());
     this.mesh = this.animals();
@@ -105,7 +105,8 @@ export class LandStage extends Stage {
       const H = normalize(u.sun.add(V));
       const glint = pow(max(dot(vec3(0, 1, 0), H), 0.0), 120.0).mul(2.5);
       const sky = vec3(0.04, 0.05, 0.08);
-      const lit = alb.mul(vec3(1.0, 0.62, 0.35).mul(ndl.mul(1.6)).add(sky));
+      const relief = sst(0.0, 0.5, w.y.add(0.1));
+      const lit = alb.mul(vec3(1.0, 0.58, 0.3).mul(ndl.pow(1.5).mul(1.1)).add(sky.mul(relief.mul(0.6).add(0.4))));
       const waterC = vec3(0.01, 0.015, 0.02).add(vec3(1.0, 0.6, 0.3).mul(glint)).add(vec3(0.3, 0.15, 0.08).mul(0.05));
       let col = mix(lit, waterC, water);
       // field representation at speed: herds and hunters as warm density glows

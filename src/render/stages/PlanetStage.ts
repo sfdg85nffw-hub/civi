@@ -114,18 +114,34 @@ export class PlanetStage extends Stage {
     relief: uniform(0),
   };
   /** emissive night-side layer (equirect, present-day coords) set by chapter overlays */
-  readonly lightsTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  /** emissive night-side layer (360×180 equirect, present-day coords), written by chapter overlays */
+  readonly lightsData = new Uint8Array(360 * 180 * 4);
+  readonly lightsTex = new THREE.DataTexture(this.lightsData, 360, 180, THREE.RGBAFormat, THREE.UnsignedByteType);
+  private lightsVersion = -1;
+  private lightsCleared = true;
+  /** agents drawn on the globe (bands, settlements, cities, lattice nodes) */
+  private gAttr!: { a: THREE.InstancedBufferAttribute; b: THREE.InstancedBufferAttribute };
+  private gMesh!: THREE.Mesh;
+  static readonly MAX_GLOBE_AGENTS = 1600;
+  /** per-chapter overlay writers (registered by chapter modules) */
+  static overlays: Record<number, (stage: PlanetStage, f: FrameContext) => void> = {};
   readonly uLights: N;
   private moon!: THREE.Mesh;
   private stars!: THREE.Mesh;
   private atmo!: THREE.Mesh;
   private smoothed: Record<string, number> = {};
   private lastImpactU = 0;
+  private lastImpactShot = '';
   params: PlanetParams = { lat: 10, lon: 20, spin: 8, sunAz: 55, sunEl: 12, moon: 0 };
 
   constructor() {
     super();
     this.plateU = uniformArray(Array.from({ length: NPLATES }, () => new THREE.Vector4(0, 0, 0, 1)), 'vec4');
+    this.lightsTex.magFilter = THREE.LinearFilter;
+    this.lightsTex.minFilter = THREE.LinearFilter;
+    this.lightsTex.wrapS = THREE.RepeatWrapping;
+    this.lightsTex.generateMipmaps = false;
+    this.lightsTex.flipY = false;
     this.lightsTex.needsUpdate = true;
     this.uLights = texture(this.lightsTex);
   }
@@ -153,6 +169,8 @@ export class PlanetStage extends Stage {
     this.scene.add(this.stars);
     this.moon = this.buildMoon();
     this.planet.add(this.buildBolide());
+    this.gMesh = this.buildGlobeAgents();
+    this.planet.add(this.gMesh);
     this.scene.add(this.moon);
   }
 
@@ -293,6 +311,7 @@ export class PlanetStage extends Stage {
       landCol = mix(landCol, vec3(0.03, 0.025, 0.02), craters.mul(0.7));
       ocean = mix(ocean, vec3(0.02, 0.02, 0.02), craters.mul(0.4));
       let albedo = mix(ocean, landCol, land);
+      const albedoScorch = float(0).toVar();
       albedo = mix(albedo, iceCol, iceMask);
       // ---- lighting ----
       const nW0 = normalize(positionWorld);
@@ -345,22 +364,26 @@ export class PlanetStage extends Stage {
       const night = sst(0.12, -0.18, ndl);
       const lava = sst(0.8, 0.98, mx_noise_float(n.mul(18.0).add(vec3(0, ct.mul(0.01), 0))).mul(0.5).add(0.5)).mul(u.volcanism).mul(land.mul(0.7).add(0.3));
       const trapsD = dot(n, u.trapsDir);
-      const traps = sst(0.965, 0.995, trapsD).mul(u.traps).mul(sst(0.3, 0.9, mx_noise_float(n.mul(60.0)).mul(0.5).add(0.5)).add(0.25));
+      const traps = sst(0.93, 0.99, trapsD).mul(u.traps).mul(sst(0.3, 0.9, mx_noise_float(n.mul(60.0)).mul(0.5).add(0.5)).mul(1.4).add(0.35));
       const craterGlow = sst(0.06, 0.0, crat).mul(u.bombardment).mul(0.6);
-      const fire = u.firestorm.mul(land).mul(sst(0.3, 0.9, mx_noise_float(n.mul(24.0).add(vec3(ct.mul(0.2), 0, 0))).mul(0.5).add(0.5)));
+      const fireSeed = sst(0.72, 0.95, mx_noise_float(n.mul(34.0).add(vec3(ct.mul(0.2), 0, 0))).mul(0.5).add(0.5));
+      const fire = u.firestorm.mul(land).mul(fireSeed).mul(sst(2.4, 0.5, T.acos(clamp(dot(n, u.impactDir), -1.0, 1.0)))).mul(night.mul(0.9).add(0.1)).mul(0.5);
       // ---- Chicxulub: crater, ejecta curtain, incandescent ejecta rain ----
       const ang = T.acos(clamp(dot(n, u.impactDir), -1.0, 1.0));
       const ring = exp(ang.sub(u.curtain).div(0.035).pow(2.0).negate()).mul(sst(0.0, 0.03, u.curtain)).mul(float(1.0).sub(sst(0.6, 1.2, u.curtain)));
       const ringBreak = vnoise(n.mul(9.0).add(vec3(ct.mul(0.1), 0, 0)), 'b').mul(0.5).add(0.6);
-      const blanket = sst(u.curtain, u.curtain.mul(0.6), ang).mul(u.crater);
+      const blanket = sst(u.curtain, u.curtain.mul(0.6), ang).mul(u.crater).mul(0.0);
       const craterG = exp(ang.div(0.025).negate()).mul(u.crater.mul(3.0).add(u.impactFlash.mul(30.0)));
-      const sparks = sst(0.82, 0.97, vnoise(n.mul(26.0).add(vec3(0, ct.mul(0.6), 0)), 'a').mul(0.5).add(0.5)).mul(u.ejecta).mul(sst(2.4, 0.2, ang));
-      const impactGlow = vec3(1.0, 0.45, 0.12).mul(ring.mul(ringBreak).mul(3.5).add(sparks.mul(2.5)).add(blanket.mul(0.6))).add(vec3(1.0, 0.85, 0.6).mul(craterG));
+      const sparks = sst(0.93, 0.99, vnoise(n.mul(40.0).add(vec3(0, ct.mul(0.6), 0)), 'a').mul(0.5).add(0.5)).mul(u.ejecta).mul(sst(1.6, 0.3, ang)).mul(sst(u.curtain.mul(0.7), u.curtain, ang));
+      const impactGlow = vec3(1.0, 0.45, 0.12).mul(ring.mul(ringBreak).mul(3.0).add(sparks.mul(2.0))).add(vec3(1.0, 0.85, 0.6).mul(craterG));
+      // ejecta blanket: dark scorched ground inside the curtain
+      albedoScorch.assign(sst(u.curtain, u.curtain.mul(0.5), ang).mul(u.crater));
       const glowLava = vec3(1.0, 0.24, 0.04).mul(lava.mul(0.7).add(traps.mul(4.0)).add(craterGlow).add(fire.mul(2.5))).add(impactGlow);
       const city = texture(lights, uvE).rgb;
       const emis = glowLava.mul(night.mul(0.85).add(0.15)).add(city.mul(night).mul(u.nightBoost).mul(float(1.0).sub(cloud.mul(0.6))));
       // impact winter: soot veil
       col = mix(col, vec3(0.05, 0.045, 0.04).mul(diff), u.impactWinter.mul(0.85));
+      col = mix(col, vec3(0.02, 0.016, 0.014).mul(diff), albedoScorch.mul(0.85));
       // ---- atmosphere along the view ray ----
       const ro = cameraPosition;
       const rd = normalize(positionWorld.sub(cameraPosition));
@@ -449,6 +472,82 @@ export class PlanetStage extends Stage {
         return { center: p, size: mix(float(0.03), float(0.012), k), color: col };
       },
     });
+  }
+
+  private buildGlobeAgents(): THREE.Mesh {
+    const n = PlanetStage.MAX_GLOBE_AGENTS;
+    const a = new Float32Array(n * 4);
+    const b = new Float32Array(n * 4);
+    const u = this.u;
+    const mesh = makeParticles({
+      count: n,
+      attributes: { a: [a, 4], b: [b, 4] },
+      renderOrder: 22,
+      softness: 2.6,
+      build: (at) => {
+        // a: local position (unit sphere) + size; b: rgb colour + flicker seed
+        const flick = sin(u.time.mul(9.0).add(at.b.w.mul(37.0))).mul(0.12).add(sin(u.time.mul(23.0).add(at.b.w.mul(11.0))).mul(0.08)).add(0.9);
+        // only on the night side (fires and lamps); faint on the day side
+        const nW = normalize(T.modelWorldMatrix.mul(vec4(at.a.xyz, 0.0)).xyz);
+        const night = sst(0.15, -0.2, dot(nW, u.sun)).mul(0.85).add(0.15);
+        return { center: at.a.xyz.mul(1.003), size: at.a.w, color: at.b.xyz.mul(flick).mul(night) };
+      },
+    });
+    (mesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
+    const attrs = mesh.userData.attrs as Record<string, THREE.InstancedBufferAttribute>;
+    attrs.a!.setUsage(THREE.DynamicDrawUsage);
+    attrs.b!.setUsage(THREE.DynamicDrawUsage);
+    this.gAttr = { a: attrs.a!, b: attrs.b! };
+    return mesh;
+  }
+
+  /**
+   * Overlay API for chapters: write agents as (lat, lon, size, r, g, b, seed).
+   * Pass count = 0 to hide.
+   */
+  setGlobeAgents(count: number, write: (i: number, out: { lat: number; lon: number; size: number; r: number; g: number; b: number; seed: number }) => void): void {
+    const n = Math.min(count, PlanetStage.MAX_GLOBE_AGENTS);
+    const A = this.gAttr.a.array as Float32Array, B = this.gAttr.b.array as Float32Array;
+    const o = { lat: 0, lon: 0, size: 0, r: 0, g: 0, b: 0, seed: 0 };
+    const D = Math.PI / 180;
+    for (let i = 0; i < n; i++) {
+      write(i, o);
+      const la = o.lat * D, lo = o.lon * D;
+      A.set([Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo), o.size], i * 4);
+      B.set([o.r, o.g, o.b, o.seed], i * 4);
+    }
+    (this.gMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = n;
+    this.gAttr.a.needsUpdate = true;
+    this.gAttr.b.needsUpdate = true;
+  }
+
+  /** Overlay API: write the emissive layer from a field (w×h cells, row 0 = north). */
+  setEmissive(version: number, w: number, h: number, sample: (x: number, y: number) => [number, number, number]): void {
+    if (version === this.lightsVersion) return;
+    this.lightsVersion = version;
+    const d = this.lightsData;
+    for (let y = 0; y < 180; y++)
+      for (let x = 0; x < 360; x++) {
+        const c = sample(Math.floor((x / 360) * w), Math.floor((y / 180) * h));
+        // texture row 0 = south (uv.y = 0 at lat −90)
+        const i = ((179 - y) * 360 + x) * 4;
+        d[i] = Math.min(255, c[0] * 255);
+        d[i + 1] = Math.min(255, c[1] * 255);
+        d[i + 2] = Math.min(255, c[2] * 255);
+        d[i + 3] = 255;
+      }
+    this.lightsTex.needsUpdate = true;
+    this.lightsCleared = false;
+  }
+
+  clearOverlays(): void {
+    if (!this.lightsCleared) {
+      this.lightsData.fill(0);
+      this.lightsTex.needsUpdate = true;
+      this.lightsCleared = true;
+      this.lightsVersion = -1;
+    }
+    (this.gMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
   }
 
   private buildMoon(): THREE.Mesh {
@@ -548,6 +647,8 @@ export class PlanetStage extends Stage {
       (this.bolideU.pos.value as THREE.Vector3).copy(pos);
       (this.bolideU.vel.value as THREE.Vector3).copy(ic.clone().sub(start));
       this.bolideU.on.value = x < hitT ? smoothstep(0.0, 0.05, x) : 0;
+      if (f.freshStage || this.lastImpactShot !== shot.def.id) this.lastImpactU = x;
+      this.lastImpactShot = shot.def.id;
       if (this.lastImpactU < hitT && x >= hitT) f.cue('impact');
       const after = Math.max(0, x - hitT) / (1 - hitT);
       u.impactFlash.value = x >= hitT ? Math.exp(-after * 22) * (f.reducedFlash ? 0.15 : 1) : 0;
@@ -566,6 +667,10 @@ export class PlanetStage extends Stage {
       u.firestorm.value = 0;
       u.impactWinter.value = smoothstep(-66.0001e6, -65.9995e6, f.T) * (1 - smoothstep(-65.99e6, -65.8e6, f.T));
     }
+    // chapter overlays (globe agents, night-side emissive fields)
+    const ov = PlanetStage.overlays[f.chapter];
+    if (ov) ov(this, f);
+    else this.clearOverlays();
     // stars attached to camera position so they never parallax
     this.stars.position.copy(this.camera.position);
   }
