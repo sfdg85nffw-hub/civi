@@ -112,6 +112,8 @@ export class PlanetStage extends Stage {
     moonlight: uniform(0.035),
     /** per-shot gain on the night-side emissive field (the polity wash in Chapter 5) */
     wash: uniform(1),
+    /** per-shot aridity scale (a greener reading of a supercontinent) */
+    aridK: uniform(1),
     speckleLo: uniform(0.72),
     stars: uniform(0.2),
     limb: uniform(1.6),
@@ -304,7 +306,7 @@ export class PlanetStage extends Stage {
       const bare = mix(basalt, redBeds, o2f.mul(0.8)).mul(d1.mul(0.35).add(0.9));
       // subtropical deserts and continental interiors
       const aridBelt = sst(0.12, 0.22, absLat).mul(sst(0.42, 0.3, absLat));
-      const arid = clamp(aridBelt.mul(0.85).add(cont.mul(0.55)).add(d1.mul(0.3)).sub(0.15), 0.0, 1.0);
+      const arid = clamp(aridBelt.mul(0.85).add(cont.mul(0.55)).add(d1.mul(0.3)).sub(0.15), 0.0, 1.0).mul(u.aridK);
       const desert = mix(sand, ochre, d2.mul(0.5).add(0.5));
       const forest = mix(mix(tropic, temperate, sst(0.15, 0.45, absLat)), boreal, sst(0.5, 0.7, absLat));
       const vegAmt = u.vegetation.mul(u.vitality).mul(float(1.0).sub(arid.mul(0.9))).mul(sst(0.85, 0.65, absLat));
@@ -801,6 +803,7 @@ export class PlanetStage extends Stage {
     // moonlight on the night side (per shot): enough to keep the continents legible under the lights
     u.moonlight.value = Number(p.moonlight ?? 0.06);
     u.wash.value = Number(p.wash ?? 1);
+    u.aridK.value = Number(p.aridK ?? 1);
     // a sky mid-transition (GOE): clear toward the right of frame, haze still holding on the left
     u.hazeSplit.value = Number(p.hazeSplit ?? 0);
     if (p.hazeSplit) {
