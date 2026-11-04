@@ -307,6 +307,15 @@ export class App {
       this.time.seekT(L.T);
       if (L.speed !== null) this.time.setSpeedYps(L.speed);
     } else if (L.s !== null) {
+      // story positions inside the Contest/Coda only exist once this run's history is cut
+      if (L.s >= this.time.odyssey.span(9).s0 && !this.galaxy.done) {
+        this.time.seekStory(this.time.odyssey.span(8).s1 - 0.5);
+        this.pendingSeek = () => {
+          this.pendingSeek = null;
+          this.begin(false);
+        };
+        return;
+      }
       this.time.seekStory(L.s);
     } else if (L.chapter !== null) {
       const ch = clamp(Math.round(L.chapter), 0, 10);
