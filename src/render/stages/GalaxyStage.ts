@@ -437,7 +437,16 @@ export class GalaxyStage extends Stage {
               const r = length(q);
               // broad gaussians: many overlap, so their sum is a smooth field
               const fall = exp(r.mul(r).mul(-4.0)).sub(0.018).max(0.0);
-              const xz = vec2(wp.x, wp.z).add(vec2(wp.y.mul(0.5), wp.y.mul(-0.3)));
+              // patterns live on the galactic plane, not on each billboard: trace this fragment's view
+              // ray to the plane through the node, so the lattice is one continuous sheet across sprites
+              // (billboard coordinates are kept for grazing views, where the plane is edge-on)
+              const camP = T.cameraPosition;
+              const vdir = normalize(wp.sub(camP));
+              const dn = vdir.y;
+              const tP = p.y.sub(camP.y).div(select(abs(dn).greaterThan(0.02), dn, float(0.02)));
+              const onPlane = camP.add(vdir.mul(tP));
+              const wq = mix(wp, onPlane, sst(0.1, 0.28, abs(dn)));
+              const xz = vec2(wq.x, wq.z).add(vec2(wq.y.mul(0.5), wq.y.mul(-0.3)));
               const k = 7.0;
               const pat = float(0.0).toVar();
               // lattice lines fade where they would alias; a coarser octave (¼ the frequency) carries

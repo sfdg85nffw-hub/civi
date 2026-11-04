@@ -13,6 +13,27 @@ Press **Begin** once. Everything after that is automatic.
 
 <!-- captures: docs/media/*.jpg are rendered by scripts/capture-shots.mjs -->
 
+| | |
+|---|---|
+| ![The membrane closes around a spark of chemistry](docs/media/01-membrane.jpg) | ![The Great Oxidation: the haze clearing across the disc](docs/media/02-oxygen.jpg) |
+| *Prologue — the membrane closes (4.0 Gya)* | *Microbial Earth — the sky turns blue (2.4 Gya)* |
+| ![Bioluminescent Cambrian seafloor](docs/media/03-cambrian.jpg) | ![Chicxulub: the ejecta curtain](docs/media/04-chicxulub.jpg) |
+| *The Many-Celled — the Cambrian seafloor* | *The Animal Kingdom — Chicxulub's curtain (66 Mya)* |
+| ![Ochre hand stencils by firelight](docs/media/05-hands.jpg) | ![Silk Road threads on the night side](docs/media/06-threads.jpg) |
+| *Hominins — hands on the wall* | *Ancient Civilizations — the threads* |
+| ![A single mote leaves Earth, 1969](docs/media/07-mote.jpg) | ![The lattice spreading from the datacenters](docs/media/08-pattern.jpg) |
+| *Modern — the mote (1969)* | *Singularity — the pattern* |
+| ![The swarm around the Sun](docs/media/09-swarm.jpg) | ![The Heir's front spreading through the Milky Way](docs/media/10-bloom.jpg) |
+| *Singularity — the swarm* | *Expansion — the bloom* |
+| ![The Milky Way edge-on, Andromeda above](docs/media/11-neighbours.jpg) | ![Something woke in Andromeda](docs/media/12-woke.jpg) |
+| *Expansion — neighbours* | *Contest — something woke in Andromeda (seed 1234ABCD)* |
+| ![Andromeda arrives: tidal tails](docs/media/13-collision.jpg) | ![The last black holes in the victor's colour](docs/media/14-holes.jpg) |
+| *Contest — Andromeda arrives (+4.5 Gyr)* | *Coda — the holes (+10⁴⁰ years)* |
+| ![The Return: the first cell, the spark in the victor's colour](docs/media/15-return.jpg) | |
+| *Coda — the Return* | |
+
+Stills are software-rendered headless captures (SwiftShader WebGL, `scripts/capture-shots.mjs`); on a GPU the piece runs on WebGPU with full particle budgets.
+
 ## Two regimes
 
 - **Regime A — fixed history (4 Gya → 2076).** Real milestones are pinned by a
