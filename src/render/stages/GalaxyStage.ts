@@ -505,21 +505,15 @@ export class GalaxyStage extends Stage {
               const front = glow.mul(pv.mul(0.07).add(0.012)).mul(frontK);
               // contested fronts: bands parallel to the border, alternating between the two powers'
               // colours, at a period fixed in screen terms (never a 1-px moiré)
-              // each side draws a thin seam of its own colour just inside the contact line, so a
-              // front reads as two hairlines, one per power (normals are stored low→high index)
-              const low = at.st.x.lessThan(at.st.w);
-              const toward = at.nb.xyz.mul(select(low, float(1.0), float(-1.0)));
-              const along = dot(wp.sub(p), toward);
-              const hB = at.b.x.div(7.0);
-              const sig = length(wp.sub(T.cameraPosition)).div(u.focalPx).mul(1.3);
-              const seam = exp(along.sub(hB.sub(sig.mul(1.2))).div(sig).pow(2.0).negate());
-              const fringe = seam.mul(contested).mul(offCore).mul(at.nb.w);
+              // the nodes on a front burn as tight soft points in their own power's colour: neighbours
+              // along the border merge into a beaded line on each side, one line per power
+              const fringe = exp(r.mul(r).mul(-16.0)).mul(contested).mul(offCore).mul(at.nb.w);
               void sc;
               // territory fills are drawn more saturated than the faction swatch (pale hues read as grey once summed)
               const fcol = fc.xyz;
               const lum = dot(fcol, vec3(0.2126, 0.7152, 0.0722));
-              const fsat = mix(vec3(lum), fcol, 1.8).max(0.0);
-              const col = fsat.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.4)))).add(fsat.mul(fringe.mul(0.14).mul(frontK.min(1.2))));
+              const fsat = mix(vec3(lum), fcol, 1.15).max(0.0);
+              const col = fsat.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.4)))).add(fsat.mul(fringe.mul(0.09).mul(frontK.min(1.2))));
               void moire;
               return vec4(col.mul(fall).mul(vVis), 1.0);
             })(),
@@ -660,7 +654,9 @@ export class GalaxyStage extends Stage {
     // faction colours + visual language
     host.factions.forEach((fi, i) => {
       if (i >= MAXF) return;
-      (u.fcol.array[i] as THREE.Vector4).set(fi.color[0], fi.color[1], fi.color[2], VIS_INDEX[fi.visual] ?? 0);
+      // territories are drawn in the vivid display version of each colour (pale swatches read as grey fog)
+      const c = vivid(fi.color);
+      (u.fcol.array[i] as THREE.Vector4).set(c[0], c[1], c[2], VIS_INDEX[fi.visual] ?? 0);
     });
     if (coda) {
       // which galaxies does the victor hold?

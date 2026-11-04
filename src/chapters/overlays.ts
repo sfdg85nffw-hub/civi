@@ -247,10 +247,12 @@ PlanetStage.overlays[6] = (stage, f) => {
     const R = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
     const U = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
     const qi = stage.planet.quaternion.clone().invert();
-    const k = Math.pow(Math.min(1, m / 0.42), 0.75);
+    // ease out into the black above the limb by m ≈ 0.38, then a slow drift toward the Moon
+    const k = 1 - Math.pow(1 - Math.min(1, m / 0.38), 2);
+    const late = Math.max(0, m - 0.38);
     const w = new THREE.Vector3(base[0]!, base[1]!, base[2]!).multiplyScalar(1.02).applyQuaternion(stage.planet.quaternion)
-      .addScaledVector(R, k * 1.05 + Math.max(0, m - 0.42) * 0.5)
-      .addScaledVector(U, k * 1.12 + Math.max(0, m - 0.42) * 0.35);
+      .addScaledVector(R, k * 0.68 + late * 0.3)
+      .addScaledVector(U, k * 0.72 + late * 0.18);
     const v = R.clone().multiplyScalar(1.05).addScaledVector(U, 1.12);
     stage.bolideU.pos.value.copy(w.applyQuaternion(qi));
     stage.bolideU.vel.value.copy(v.applyQuaternion(qi));
