@@ -489,7 +489,7 @@ export class VentStage extends Stage {
         attributes: { a: [one, 4] },
         renderOrder: 14,
         softness: 3.0,
-        build: (at) => ({ center: at.a.xyz, size: float(0.14), color: vec3(sc).mul(I.mul(0.011)) }),
+        build: (at) => ({ center: at.a.xyz, size: float(0.11), color: vec3(sc).mul(I.mul(0.0065)) }),
       }),
     );
     g.add(
