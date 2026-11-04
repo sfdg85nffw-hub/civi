@@ -10,7 +10,7 @@ const pattern: ShotDef = {
   id: 'si-pattern', stage: 'planet', dur: 8, label: 'The pattern', signature: true,
   transition: { type: 'blend', dur: 1.6 },
   rig: orbit({ radius: 2.75, radiusTo: 2.35, elev: 0.32, elevTo: 0.22, az: -0.18, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.0, 0.18, 0] }),
-  params: { lat: 44, lon: -30, spin: 34, sunAz: 168, sunEl: 9, stars: 0.16, su: 0.55 },
+  params: { moonlight: 0.07, lat: 32, lon: 22, spin: 30, sunAz: 168, sunEl: 9, stars: 0.16, su: 0.55 },
 };
 
 export const singularity: ChapterDef = {
@@ -22,7 +22,7 @@ export const singularity: ChapterDef = {
       id: 'si-datacenters', stage: 'planet', dur: 5, label: 'Cold lights',
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ radius: 2.6, radiusTo: 2.45, elev: 0.22, az: 0.08, azTo: -0.04, fov: 32, ease: easeInOutSine, targetOffset: [-0.05, 0.15, 0] }),
-      params: { moonlight: 0.16, lat: 40, lon: -88, spin: 10, sunAz: -160, sunEl: 10, stars: 0.16, su: 0.8 },
+      params: { moonlight: 0.075, lat: 40, lon: -88, spin: 10, sunAz: -160, sunEl: 10, stars: 0.16, su: 0.8 },
     },
     pattern,
     {

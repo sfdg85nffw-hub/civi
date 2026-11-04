@@ -23,13 +23,13 @@ export const microbial: ChapterDef = {
     {
       id: 'm-mat', stage: 'micro', dur: 11, label: 'The mat', signature: true, params: { su: 0.45 },
       transition: { type: 'dive', dur: 1.6 },
-      rig: push({ from: [0.05, 0.5, 0.07], to: [-0.04, 0.36, 0.035], target: [0.05, 0, 0.0], targetTo: [-0.04, 0, -0.01], fov: 34, fovTo: 32, ease: easeInOutSine, roll: 0.0, rollTo: 0.12 }),
+      rig: push({ from: [0.05, 0.5, 0.07], to: [-0.04, 0.36, 0.035], target: [0.05, 0, 0.0], targetTo: [-0.04, 0, -0.01], fov: 34, fovTo: 32, ease: easeInOutSine, roll: 0.0, rollTo: 0.12, focus: 0.5, focusTo: 0.36, aperture: 0.3 }),
     },
     {
       id: 'm-goe', stage: 'planet', dur: 6, label: 'The Great Oxidation (orbital time-lapse)', signature: true,
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ radius: 4.3, radiusTo: 3.9, elev: 0.16, elevTo: 0.1, az: -0.25, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [-0.45, 0, 0] }),
-      params: { lat: 18, lon: 10, spin: 70, sunAz: -72, sunEl: 24, su: 0.85, stars: 0.12 },
+      params: { lat: 18, lon: 10, spin: 70, sunAz: -72, sunEl: 24, su: 0.93, stars: 0.12 },
     },
     {
       id: 'm-snowball', stage: 'planet', dur: 3.5, label: 'Snowball', signature: true,

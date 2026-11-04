@@ -97,7 +97,9 @@ export class SeafloorStage extends Stage {
       const w = positionWorld;
       const grain = vnoise(w.mul(3.0), 'a').mul(0.5).add(0.5);
       const patches = vnoise(w.mul(0.25), 'g').mul(0.5).add(0.5);
-      let base = mix(vec3(0.05, 0.045, 0.036), vec3(0.09, 0.08, 0.06), grain.mul(0.4).add(patches.mul(0.6)));
+      // rippled sand: wave-cut ridges under the grain
+      const ripple = sin(w.x.mul(5.5).add(w.z.mul(1.7)).add(vnoise(w.mul(0.6), 'b').mul(2.5))).mul(0.5).add(0.5);
+      let base = mix(vec3(0.075, 0.068, 0.052), vec3(0.15, 0.13, 0.095), grain.mul(0.3).add(patches.mul(0.4)).add(ripple.mul(0.3)));
       // microbial mats still carpet the sand: dark green-brown patches
       base = mix(base, vec3(0.03, 0.04, 0.025), sst(0.55, 0.75, patches).mul(0.7));
       // caustics from the surface
@@ -105,9 +107,9 @@ export class SeafloorStage extends Stage {
       const c1 = mx_worley_noise_float(vec3(cq.x, cq.y, u.time.mul(0.4)));
       const c2 = mx_worley_noise_float(vec3(cq.x.mul(1.37).add(4.0), cq.y.mul(1.37), u.time.mul(0.31).add(7.0)));
       const caust = pow(clamp(float(1.0).sub(min(c1, c2).mul(2.3)), 0.0, 1.0), 5.0);
-      const light = mix(vec3(0.5, 0.75, 0.7), vec3(0.3, 0.55, 0.6), u.cambrian);
+      const light = mix(vec3(0.75, 0.82, 0.6), vec3(0.62, 0.72, 0.55), u.cambrian);
       const amb = mix(vec3(0.06, 0.1, 0.1), vec3(0.015, 0.03, 0.04), u.cambrian);
-      const col = base.mul(amb.add(light.mul(caust.mul(1.4).add(0.12))));
+      const col = base.mul(amb.add(light.mul(caust.mul(2.6).mul(ripple.mul(0.5).add(0.75)).add(0.12))));
       return vec4(col, 1.0);
     })();
     return new THREE.Mesh(geo, mat);

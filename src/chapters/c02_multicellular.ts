@@ -9,8 +9,8 @@ import { CREATURE_FATE } from '../sim/agents/creatures';
 const colonies: ShotDef = {
   id: 'mc-colonies', stage: 'micro', dur: 7, label: 'Colonies', signature: true,
   transition: { type: 'dive', dur: 1.4 },
-  rig: push({ from: [0.06, 0.46, 0.06], to: [-0.03, 0.34, 0.035], target: [0.05, 0, 0], targetTo: [-0.03, 0, -0.01], fov: 33, ease: easeInOutSine, roll: 0.1, rollTo: -0.05 }),
-  params: { su: 0.6 },
+  rig: push({ from: [0.06, 0.46, 0.06], to: [-0.03, 0.34, 0.035], target: [0.05, 0, 0], targetTo: [-0.03, 0, -0.01], fov: 33, ease: easeInOutSine, roll: 0.1, rollTo: -0.05, focus: 0.38, focusTo: 0.27, aperture: 0.35 }),
+  params: { su: 0.6, colonies: 1 },
 };
 const cambrian: ShotDef = {
   id: 'mc-cambrian', stage: 'seafloor', dur: 5.5, label: 'The Cambrian seafloor', signature: true,

@@ -75,7 +75,8 @@ PlanetStage.overlays[5] = (stage, f) => {
   th.u.vis.value = 1;
   (th.u.sun.value as import('three/webgpu').Vector3).copy(stage.u.sun.value as import('three/webgpu').Vector3);
   // the Black Death moves out from Kaffa (1346) along the threads
-  th.u.plague.value = year > 1346 && year < 1356 ? (year - 1346.3) * 26 : -1;
+  // ~9°/yr: Kaffa 1346, Sicily 1347, Paris 1348, England 1349, Scandinavia 1350
+  th.u.plague.value = year > 1346 && year < 1358 ? (year - 1346.3) * 9 : -1;
   const ag = f.agents;
   if (ag && ag.sim === 'polities') {
     const fld = ag.snap.fields.polity;
@@ -230,7 +231,8 @@ PlanetStage.overlays[6] = (stage, f) => {
   });
   if (trinity > 0.5) f.cue('nuke');
   // Apollo 11: a single bright mote leaves the atmosphere from Florida
-  const m = (year - 1969.535) * 40;
+  // spread over the Odyssey's slow beat around 1969 so the mote is actually seen
+  const m = (year - 1969.1) / 0.6;
   if (m > 0 && m < 1) {
     f.cue('mote');
     const D = Math.PI / 180;
@@ -238,7 +240,7 @@ PlanetStage.overlays[6] = (stage, f) => {
     const up = 1.004 + m * m * 0.9;
     stage.bolideU.pos.value.set(base[0]! * up + m * 0.25, base[1]! * up + m * 0.1, base[2]! * up);
     stage.bolideU.vel.value.set(base[0]! + 0.3, base[1]! + 0.1, base[2]!);
-    stage.bolideU.on.value = Math.sin(Math.PI * Math.min(1, m * 1.2)) * 0.5;
+    stage.bolideU.on.value = Math.sin(Math.PI * Math.min(1, m * 1.1)) * 0.9;
   }
 };
 
@@ -270,7 +272,20 @@ PlanetStage.overlays[7] = (stage, f) => {
   const nS = snap && f.lodMix > 0.02 ? snap.count - 1 : 0;
   const dc = f.world.datacenters;
   const lastOn = f.T < LAST_LIGHT_T ? 1 : Math.max(0, 1 - (f.T - LAST_LIGHT_T) * 60);
-  stage.setGlobeAgents(DATACENTERS.length + nS + 1, (i, o) => {
+  stage.setGlobeAgents(DATACENTERS.length + nS + 2, (i, o) => {
+    if (i === DATACENTERS.length + nS + 1) {
+      // the last light's halo: warm, soft, unmistakable against the crystal
+      const flick = 0.85 + 0.15 * Math.sin(f.time * 7) * Math.sin(f.time * 2.3);
+      o.lat = LAST_LIGHT[0];
+      o.lon = LAST_LIGHT[1];
+      o.size = 0.022;
+      const v = 0.32 * lastOn * flick;
+      o.r = v;
+      o.g = 0.55 * v;
+      o.b = 0.22 * v;
+      o.seed = 0.31;
+      return;
+    }
     if (i < DATACENTERS.length) {
       const [la, lo] = DATACENTERS[i]!;
       o.lat = la;
@@ -288,8 +303,8 @@ PlanetStage.overlays[7] = (stage, f) => {
       const flick = 0.75 + 0.25 * Math.sin(f.time * 11) * Math.sin(f.time * 3.7);
       o.lat = LAST_LIGHT[0];
       o.lon = LAST_LIGHT[1];
-      o.size = 0.0035;
-      const v = 2.2 * lastOn * flick * Math.max(0.15, 1 - f.world.humanLights * 0.9);
+      o.size = 0.005;
+      const v = 4.5 * lastOn * flick * Math.max(0.3, 1 - f.world.humanLights * 0.9);
       o.r = v;
       o.g = 0.6 * v;
       o.b = 0.28 * v;

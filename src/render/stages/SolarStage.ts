@@ -90,7 +90,7 @@ export class SolarStage extends Stage {
         build: (at) => ({
           center: at.a.xyz,
           size: float(1.25),
-          color: vec3(1.0, 0.78, 0.55).mul(float(1.0).sub(u.dyson.mul(0.6))).mul(0.03),
+          color: vec3(1.0, 0.86, 0.66).mul(float(1.0).sub(u.dyson.mul(0.7))).mul(0.016),
           shape: (q: N) => {
             const r = length(q);
             const ray = vnoise(vec3(T.atan(q.y, q.x).mul(3.0), r.mul(2.0), u.time.mul(0.05)), 'b').mul(0.5).add(0.5);

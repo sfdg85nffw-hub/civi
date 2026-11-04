@@ -334,7 +334,9 @@ export class PlanetStage extends Stage {
       const sast = mx_noise_float(n.mul(vec3(160.0, 22.0, 160.0))).mul(0.5).add(0.5);
       const leads = sst(0.985, 0.998, float(1.0).sub(abs(mx_noise_float(n.mul(vec3(7.0, 4.0, 7.0)).add(d1.mul(1.4)))))).mul(land.oneMinus());
       const slush = sst(0.22, 0.0, absLat).mul(snowball).mul(sst(0.2, 0.7, d1.mul(0.5).add(0.5)));
-      let iceCol = mix(vec3(0.74, 0.79, 0.84), vec3(0.88, 0.9, 0.92), sast.mul(0.6).add(d2.mul(0.2)).add(0.2));
+      // glacial white-blue, with deeper blue in the compressed old ice
+      let iceCol = mix(vec3(0.66, 0.77, 0.9), vec3(0.9, 0.94, 0.98), sast.mul(0.6).add(d2.mul(0.2)).add(0.2));
+      iceCol = mix(iceCol, vec3(0.45, 0.62, 0.82), sst(0.55, 0.85, d1.mul(0.5).add(0.5)).mul(0.25));
       iceCol = mix(iceCol, vec3(0.26, 0.34, 0.42), leads.mul(0.7));
       iceCol = mix(iceCol, vec3(0.36, 0.46, 0.52), slush.mul(0.5));
       // ---- bombardment and volcanism ----
@@ -412,10 +414,15 @@ export class PlanetStage extends Stage {
       albedoScorch.assign(sst(u.curtain, u.curtain.mul(0.5), ang).mul(u.crater));
       const glowLava = vec3(1.0, 0.24, 0.04).mul(lava.mul(0.7).add(traps.mul(4.0)).add(craterGlow).add(fire.mul(2.5))).add(impactGlow);
       // night-side emissive layer: a density field broken into points of light (fires, villages, cities)
-      const dens = texture(lights, uvE).rgb;
-      const sp1 = sst(u.speckleLo, 1.0, vnoise(n.mul(140.0), 'a').mul(0.5).add(0.5));
-      const sp2 = sst(u.speckleLo.add(0.05), 1.0, vnoise(n.mul(420.0).add(7.0), 'a').mul(0.5).add(0.5));
-      const speck = mix(float(1.0), sp1.mul(0.7).add(sp2.mul(1.4)), u.speckle);
+      // the density grid is coarse (1°): four rotated taps hide its texels
+      const tx = vec2(0.6 / 360.0, 0.25 / 180.0), ty = vec2(-0.25 / 360.0, 0.6 / 180.0);
+      const dens = texture(lights, uvE.add(tx)).rgb.add(texture(lights, uvE.sub(tx)).rgb).add(texture(lights, uvE.add(ty)).rgb).add(texture(lights, uvE.sub(ty)).rgb).mul(0.25);
+      // individual lights: crisp points at two scales (towns, then the scatter around them)
+      const wp1 = mx_worley_noise_float(n.mul(210.0));
+      const wp2 = mx_worley_noise_float(n.mul(560.0).add(3.0));
+      const sp1 = sst(0.3, 0.04, wp1).mul(sst(u.speckleLo.sub(0.3), 1.0, vnoise(n.mul(40.0), 'a').mul(0.5).add(0.5)).mul(0.6).add(0.4));
+      const sp2 = sst(0.26, 0.03, wp2);
+      const speck = mix(float(1.0), sp1.mul(1.1).add(sp2.mul(0.9)), u.speckle);
       // people cluster along coasts and rivers: weight by proximity to the sea and a clustering field
       const coastal = sst(0.55, 0.0, cont).mul(0.75).add(0.25);
       const cluster = sst(0.35, 0.85, vnoise(n.mul(22.0), 'g').mul(0.5).add(0.5));
@@ -448,7 +455,7 @@ export class PlanetStage extends Stage {
         // the growth front is faceted, like any crystal growing into a melt
         const facet = mx_worley_noise_float(n.mul(9.0)).mul(0.07);
         const dLast = T.acos(clamp(dot(n, u.lastLightDir), -1.0, 1.0));
-        covered.assign(sst(front.add(facet), front.add(facet).sub(0.025), d1).mul(sst(u.latticeHole, u.latticeHole.add(0.02), dLast)).mul(sst(0.0, 0.02, u.lattice)));
+        covered.assign(sst(front.add(facet), front.add(facet).sub(0.025), d1).mul(sst(u.latticeHole, u.latticeHole.add(0.02), dLast).mul(sst(0.0, 0.09, dLast).mul(0.75).add(0.25))).mul(sst(0.0, 0.02, u.lattice)));
         // azimuthal-equidistant coordinates in the grain's own lattice frame
         const tdir = normalize(n.sub(c1.mul(dot(n, c1))).add(g1.mul(1e-5)));
         const g = vec2(dot(tdir, g1), dot(tdir, g2)).mul(d1);
@@ -473,14 +480,15 @@ export class PlanetStage extends Stage {
         // grain boundaries, where two seeds' crystals meet
         const seam = sst(0.012, 0.0, d2.sub(d1));
         // signals ripple outward from each seed along the lattice
-        const pulse = sin(d1.mul(42.0).sub(u.time.mul(4.0))).mul(0.5).add(0.5).pow(8.0);
+        // signals ripple outward, broken up by the grain so they don't read as target rings
+        const pulse = sin(d1.mul(42.0).sub(u.time.mul(4.0)).add(facet.mul(30.0))).mul(0.5).add(0.5).pow(8.0);
         const age = sst(0.0, 0.25, front.sub(d1));
         const lat = l1.mul(0.28).add(l2.mul(0.32)).add(l3.mul(0.2)).add(n1.mul(1.3)).add(n2.mul(0.5));
         const frontGlow = exp(abs(d1.sub(front.add(facet))).mul(-260.0)).mul(sst(0.0, 0.05, u.lattice)).mul(sst(0.42, 0.37, u.lattice));
         const seedCore = exp(d1.mul(-40.0)).mul(0.5);
         // denser over the continents it was built on, a fainter mesh across the sea
         const where = land.mul(0.85).add(0.15);
-        latticeEm.assign(vec3(0.5, 0.72, 1.0).mul(covered.mul(lat.mul(pulse.mul(1.5).add(age.mul(-0.04).add(0.1))).mul(where).add(seam.mul(0.25)).add(seedCore))).mul(0.4).add(vec3(0.8, 0.9, 1.0).mul(frontGlow.mul(0.35))));
+        latticeEm.assign(vec3(0.5, 0.72, 1.0).mul(covered.mul(lat.mul(pulse.mul(0.85).add(age.mul(-0.04).add(0.14))).mul(where).add(seam.mul(0.25)).add(seedCore.mul(0.6)))).mul(0.4).add(vec3(0.8, 0.9, 1.0).mul(frontGlow.mul(0.35))));
         void n2;
       });
       // human lights die where the lattice has passed
@@ -498,7 +506,7 @@ export class PlanetStage extends Stage {
       const at = scatter(ro, rd, t0, t1, atmoU, 10, 4);
       // faint moonlight so continents remain legible on the night side
       // (bright ice is compressed so it reads as moonlit terrain, not a grey cut-out)
-      col = col.add(min(albedo, vec3(0.2)).mul(albedo.add(0.6)).mul(vec3(0.5, 0.6, 0.85)).mul(sst(0.05, -0.25, ndl0)).mul(u.moonlight).mul(cloud.mul(-0.5).add(1.0)));
+      col = col.add(min(albedo, vec3(0.11)).mul(albedo.mul(0.4).add(0.85)).mul(vnoise(n.mul(30.0), 'g').mul(0.25).add(0.9)).mul(vec3(0.5, 0.6, 0.85)).mul(sst(0.05, -0.25, ndl0)).mul(u.moonlight).mul(cloud.mul(-0.5).add(1.0)));
       const outC = col.mul(at.trans).add(at.inscatter).add(emis.mul(at.trans.mul(0.6).add(0.4)));
       return vec4(outC.mul(u.exposure), 1.0);
     })();
@@ -561,7 +569,7 @@ export class PlanetStage extends Stage {
   }
 
   /** the bolide: a blinding mote with a plasma trail, falling toward the impact point */
-  readonly bolideU = { pos: uniform(new THREE.Vector3(3, 2, 2)), vel: uniform(new THREE.Vector3(-1, -1, -1)), on: uniform(0) };
+  readonly bolideU = { pos: uniform(new THREE.Vector3(3, 2, 2)), vel: uniform(new THREE.Vector3(-1, -1, -1)), on: uniform(0), size: uniform(1) };
   private buildBolide(): THREE.Object3D {
     const n = 40;
     const a = new Float32Array(n * 4);
@@ -576,8 +584,9 @@ export class PlanetStage extends Stage {
         const k = at.a.x;
         const p = B.pos.sub(normalize(B.vel).mul(k.mul(0.35)));
         const head = sst(0.08, 0.0, k);
-        const col = mix(vec3(1.0, 0.45, 0.15), vec3(1.0, 0.95, 0.85), head).mul(float(1.0).sub(k).pow(2.0).mul(0.5).add(head.mul(6.0))).mul(B.on);
-        return { center: p, size: mix(float(0.03), float(0.012), k), color: col };
+        // a hard white point with a short, faint wake (not a smear)
+        const col = mix(vec3(1.0, 0.45, 0.15), vec3(1.0, 0.97, 0.9), head).mul(float(1.0).sub(k).pow(3.0).mul(0.25).add(head.mul(16.0))).mul(B.on);
+        return { center: p, size: mix(float(0.012), float(0.004), k).mul(B.size), color: col };
       },
     });
   }
@@ -755,6 +764,7 @@ export class PlanetStage extends Stage {
       this.moon.scale.setScalar(4.2);
     }
     // ---- Chicxulub sequence (shot-driven) ----
+    this.bolideU.size.value = p.impact ? 2.8 : 1;
     if (p.impact) {
       const x = shot.u;
       const ic = u.impactDir.value as THREE.Vector3;

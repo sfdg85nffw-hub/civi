@@ -13,7 +13,7 @@ export const hominins: ChapterDef = {
       id: 'h-africa', stage: 'planet', dur: 5, label: 'Africa, the ice ages breathing',
       transition: { type: 'dissolve', dur: 1.0 },
       rig: orbit({ radius: 3.2, radiusTo: 2.9, elev: 0.08, az: -0.15, azTo: 0.05, fov: 32, ease: easeInOutSine, targetOffset: [-0.15, 0.05, 0] }),
-      params: { moonlight: 0.16, lat: 8, lon: 22, spin: 10, sunAz: -142, sunEl: 12, stars: 0.18, su: 0.6 },
+      params: { moonlight: 0.075, lat: 8, lon: 22, spin: 10, sunAz: -142, sunEl: 12, stars: 0.18, su: 0.6 },
     },
     {
       id: 'h-fire', stage: 'fire', dur: 5, label: 'The first flame', signature: true,
@@ -24,8 +24,8 @@ export const hominins: ChapterDef = {
     {
       id: 'h-ooa', stage: 'planet', dur: 6, label: 'Out of Africa', signature: true,
       transition: { type: 'fade', dur: 1.2 },
-      rig: orbit({ radius: 3.0, radiusTo: 2.7, elev: 0.2, elevTo: 0.15, az: 0.0, azTo: 0.12, fov: 34, ease: easeInOutSine, targetOffset: [0.0, 0.15, 0] }),
-      params: { moonlight: 0.16, lat: 28, lon: 55, spin: 24, sunAz: 152, sunEl: 10, stars: 0.2, su: 0.75 },
+      rig: orbit({ radius: 5.6, radiusTo: 5.1, elev: 0.12, elevTo: 0.08, az: 0.0, azTo: 0.1, fov: 32, ease: easeInOutSine, targetOffset: [-1.05, 0.05, 0] }),
+      params: { moonlight: 0.075, lat: 28, lon: 55, spin: 24, sunAz: 152, sunEl: 10, stars: 0.2, su: 0.75 },
     },
     {
       id: 'h-hands', stage: 'cave', dur: 4, label: 'Handprints', signature: true,

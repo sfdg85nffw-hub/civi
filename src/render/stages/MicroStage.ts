@@ -34,6 +34,7 @@ export class MicroStage extends Stage {
     time: uniform(0),
     lod: uniform(0),
     alpha: uniform(0),
+    colonies: uniform(0),
     o2: uniform(0),
     haze: uniform(0.8),
     ice: uniform(0),
@@ -56,6 +57,91 @@ export class MicroStage extends Stage {
     this.cellMesh = this.buildCells();
     this.scene.add(this.cellMesh);
     this.scene.add(this.motes());
+    this.scene.add(this.volvox());
+  }
+
+  /**
+   * Volvox-like colonies (the many-celled): hollow spheres of tiny flagellated
+   * cells turning slowly in the water column, daughter colonies inside, a
+   * dark-field rim around each. Only shown when a shot asks for colonies.
+   */
+  private volvox(): THREE.Object3D {
+    const rng = new Rng(0x7010, 4);
+    const NC = 7, SHELL = 420, DAUGHTERS = 4, DC = 70;
+    const per = SHELL + DAUGHTERS * DC + 1;
+    const n = NC * per;
+    const A = new Float32Array(n * 4), B = new Float32Array(n * 4), Cc = new Float32Array(n * 4);
+    let k = 0;
+    for (let c = 0; c < NC; c++) {
+      const cx = rng.range(-0.13, 0.13), cz = rng.range(-0.09, 0.09), cy = rng.range(0.03, 0.12);
+      const R = rng.range(0.022, 0.042);
+      const seed = rng.next();
+      // the rim sprite
+      A.set([cx, cy, cz, R], k * 4);
+      B.set([2, 0, 0, seed], k * 4);
+      k++;
+      // shell cells: a Fibonacci sphere, slightly jittered
+      for (let i = 0; i < SHELL; i++) {
+        const y = 1 - (2 * (i + 0.5)) / SHELL;
+        const r = Math.sqrt(1 - y * y), th = i * 2.39996 + rng.normal(0, 0.03);
+        A.set([cx, cy, cz, R], k * 4);
+        B.set([0, Math.acos(y), th, seed], k * 4);
+        k++;
+      }
+      // daughter colonies: dense clumps inside
+      for (let d = 0; d < DAUGHTERS; d++) {
+        const dth = rng.range(0, 6.28), dph = rng.range(0.5, 2.6), dr = rng.range(0.25, 0.55);
+        const ox = Math.sin(dph) * Math.cos(dth) * dr, oy = Math.cos(dph) * dr, oz = Math.sin(dph) * Math.sin(dth) * dr;
+        const rr = rng.range(0.12, 0.2);
+        for (let i = 0; i < DC; i++) {
+          const y = 1 - (2 * (i + 0.5)) / DC;
+          const r = Math.sqrt(1 - y * y), th = i * 2.39996;
+          A.set([cx, cy, cz, R], k * 4);
+          B.set([1, 0, 0, seed], k * 4);
+          // daughter cell position in colony units (before the colony's spin)
+          Cc.set([ox + r * Math.cos(th) * rr, oy + y * rr, oz + r * Math.sin(th) * rr, 0], k * 4);
+          k++;
+        }
+      }
+    }
+    const u = this.u;
+    return makeParticles({
+      count: n,
+      attributes: { a: [A, 4], b: [B, 4], c: [Cc, 4] },
+      renderOrder: 12,
+      softness: 2.0,
+      build: (at) => {
+        const kind = at.b.x;
+        const isRim = kind.greaterThan(1.5);
+        const isD = kind.greaterThan(0.5).and(isRim.not());
+        const R = at.a.w;
+        const spin = u.time.mul(0.25).add(at.b.w.mul(6.28));
+        const ph = at.b.y, th = at.b.z.add(spin);
+        const shellP = vec3(sin(ph).mul(cos(th)), cos(ph), sin(ph).mul(sin(th)));
+        // daughters: small spheres of cells, turning with their parent
+        const cs = cos(spin), sn = sin(spin);
+        const dc = at.c.xyz;
+        const dP = vec3(dc.x.mul(cs).sub(dc.z.mul(sn)), dc.y, dc.x.mul(sn).add(dc.z.mul(cs))).mul(R);
+        const drift = vec3(sin(u.time.mul(0.07).add(at.b.w.mul(9.0))).mul(0.006), sin(u.time.mul(0.05).add(at.b.w.mul(4.0))).mul(0.003), cos(u.time.mul(0.06).add(at.b.w.mul(7.0))).mul(0.006));
+        const local = select(isRim, vec3(0.0), select(isD, dP, shellP.mul(R)));
+        const center = at.a.xyz.add(drift).add(local);
+        // shell cells facing the camera are dimmer than those on the limb (dark-field edge glow)
+        const green = vec3(0.42, 0.95, 0.5);
+        const col = select(isRim, vec3(0.35, 0.8, 0.55).mul(0.06), select(isD, vec3(0.3, 0.85, 0.35).mul(0.55), green.mul(0.4))).mul(u.colonies);
+        const size = select(isRim, R.mul(2.15), select(isD, float(0.0016), float(0.0012)));
+        return {
+          center,
+          size,
+          color: col,
+          shape: (q: N) => {
+            const r = length(q);
+            const rim = exp(abs(r.sub(0.93)).mul(-28.0)).add(exp(r.mul(-3.0)).mul(0.08));
+            const dot0 = float(1.0).sub(r).max(0.0).pow(2.0);
+            return select(isRim, rim, dot0);
+          },
+        };
+      },
+    });
   }
 
   /** the mat: sediment, rust, luminous biomass field, caustics */
@@ -301,6 +387,9 @@ export class MicroStage extends Stage {
     const clear = clamp01(1 - f.world.haze * 1.1);
     (u.sunTint.value as THREE.Color).setRGB(1.0, 0.6 + 0.35 * clear, 0.3 + 0.62 * clear);
     u.fieldGain.value = Math.pow(1 - f.lodMix, 2);
+    u.colonies.value = Number(shot.def.params?.colonies ?? 0) * smoothstep(0.0, 0.25, shot.u);
+    // the colonies are the subject: the mat beneath them recedes
+    u.fieldGain.value *= 1 - 0.6 * u.colonies.value;
     this.uploadAgents(f);
     void shot;
   }

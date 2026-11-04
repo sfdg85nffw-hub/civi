@@ -122,8 +122,9 @@ export class FireStage extends Stage {
     const rng = new Rng(0x570e, 1);
     const mat = new THREE.MeshStandardNodeMaterial({ roughness: 0.8 });
     mat.colorNode = mix(vec3(0.07, 0.06, 0.055), vec3(0.14, 0.12, 0.1), vnoise(positionWorld.mul(6.0), 'b').mul(0.5).add(0.5));
-    for (let i = 0; i < 11; i++) {
-      const a = (i / 11) * Math.PI * 2 + rng.range(-0.15, 0.15);
+    // a loose, uneven hearth: stones where they happened to be, not a masonry ring
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + rng.range(-0.35, 0.35);
       const geo = new THREE.SphereGeometry(rng.range(0.06, 0.1), 20, 14);
       const pp = geo.getAttribute('position') as THREE.BufferAttribute;
       for (let k = 0; k < pp.count; k++) {
@@ -132,7 +133,8 @@ export class FireStage extends Stage {
       }
       geo.computeVertexNormals();
       const m = new THREE.Mesh(geo, mat);
-      m.position.set(Math.cos(a) * 0.36, 0.03, Math.sin(a) * 0.36);
+      const rr = rng.range(0.3, 0.44);
+      m.position.set(Math.cos(a) * rr, 0.02 + rng.range(0, 0.02), Math.sin(a) * rr);
       m.rotation.set(rng.range(0, 3), rng.range(0, 3), rng.range(0, 3));
       g.add(m);
     }
@@ -140,11 +142,13 @@ export class FireStage extends Stage {
     const stick = new THREE.MeshStandardNodeMaterial({ roughness: 0.9 });
     stick.colorNode = vec3(0.05, 0.03, 0.02);
     stick.emissiveNode = vec3(1.0, 0.35, 0.08).mul(this.u.ignite.mul(0.25)).mul(vnoise(positionWorld.mul(20.0), 'a').mul(0.5).add(0.5).pow(3.0));
-    for (let i = 0; i < 5; i++) {
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.42, 8), stick);
-      const a = (i / 5) * Math.PI;
-      m.position.set(0, 0.06, 0);
-      m.rotation.set(0.35, a, Math.PI / 2 - 0.25);
+    // a few irregular branches leaning together, not a radial star
+    for (let i = 0; i < 4; i++) {
+      const len = rng.range(0.28, 0.46);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(rng.range(0.008, 0.012), rng.range(0.013, 0.02), len, 7), stick);
+      const a = rng.range(0, Math.PI * 2);
+      m.position.set(rng.normal(0, 0.03), 0.05 + rng.range(0, 0.03), rng.normal(0, 0.03));
+      m.rotation.set(rng.range(0.2, 0.6), a, Math.PI / 2 - rng.range(0.15, 0.55));
       g.add(m);
     }
     return g;

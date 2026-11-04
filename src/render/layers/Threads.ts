@@ -61,10 +61,14 @@ export class ThreadsLayer {
         const d = T.acos(min(max(dot(normalize(at.a.xyz), u.plagueOrigin), -1.0), 1.0)).mul(180.0 / Math.PI);
         const front = u.plague;
         const dark = sst(front.sub(25.0), front, d).oneMinus().mul(sst(front.sub(70.0), front.sub(30.0), d)).mul(front.greaterThan(0.0).select(float(1.0), float(0.0)));
-        const plagueDim = float(1.0).sub(dark.mul(0.85));
+        const plagueDim = float(1.0).sub(dark.mul(0.7));
+        // at the front itself the threads burn a sick red; behind it they are ash
+        const edge = T.exp(T.abs(d.sub(front)).mul(-0.35)).mul(front.greaterThan(0.0).select(float(1.0), float(0.0)));
         const nW = normalize(T.modelWorldMatrix.mul(T.vec4(at.a.xyz, 0.0)).xyz);
         const night = sst(0.2, -0.15, dot(nW, u.sun)).mul(0.85).add(0.15);
-        const col = mix(vec3(color[0], color[1], color[2]), vec3(1.0, 0.95, 0.85), bead.min(1.0)).mul(float(0.22).add(bead)).mul(at.b.z).mul(active).mul(u.vis).mul(plagueDim).mul(night).mul(0.5);
+        const gold = mix(vec3(color[0], color[1], color[2]), vec3(1.0, 0.95, 0.85), bead.min(1.0));
+        const tint = mix(mix(gold, vec3(0.32, 0.3, 0.28), dark), vec3(1.0, 0.18, 0.08), edge.mul(0.85));
+        const col = tint.mul(float(0.22).add(bead).add(edge.mul(1.4))).mul(at.b.z).mul(active).mul(u.vis).mul(plagueDim).mul(night).mul(0.5);
         return { center: at.a.xyz.mul(altitude), size: float(0.0026).add(bead.mul(0.0025)), color: col.mul(0.6) };
       },
     });

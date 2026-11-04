@@ -35,7 +35,7 @@ export class PostFX {
   readonly uTime: N = uniform(0);
   readonly uAspect: N = uniform(16 / 9);
   readonly uBloomStrength: N = uniform(0.6);
-  readonly uSaturation: N = uniform(1);
+  readonly uSaturation: N = uniform(1.28);
   readonly uLift: N = uniform(0);
   readonly uTint: N = uniform(new THREE.Color(1, 1, 1));
   readonly uBloomThreshold: N = uniform(0);
@@ -167,6 +167,8 @@ export class PostFX {
     const final = Fn(() => {
       const p = uv();
       const c = ldr.rgb.toVar();
+      // AgX's shoulder never reaches display white: expand so hero emitters can hit 1.0
+      c.assign(c.mul(1.1).min(vec3(1.0)));
       // vignette
       const d = p.sub(0.5).mul(vec2(uAspect.mul(0.85), 1.0));
       const v = smoothstep(0.95, 0.18, length(d));

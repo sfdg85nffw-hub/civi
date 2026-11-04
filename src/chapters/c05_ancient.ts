@@ -1,15 +1,15 @@
 import { CHAPTERS } from './meta';
 import type { ChapterDef } from './types';
 import type { ShotDef } from '../director/types';
-import { orbit } from '../director/rigs';
+import { orbit, push } from '../director/rigs';
 import { easeInOutSine } from '../core/math';
 import { POLITY_FATE } from '../sim/agents/polities';
 
 const empires: ShotDef = {
   id: 'an-empires', stage: 'planet', dur: 9, label: 'Empires breathe', signature: true,
   transition: { type: 'blend', dur: 2.0 },
-  rig: orbit({ radius: 2.35, radiusTo: 2.15, elev: 0.12, az: -0.08, azTo: 0.08, fov: 32, ease: easeInOutSine, targetOffset: [0.0, 0.1, 0] }),
-  params: { moonlight: 0.16, lat: 39, lon: 20, spin: 8, sunAz: -152, sunEl: 12, stars: 0.16, su: 0.7 },
+  rig: push({ from: [0.12, -0.42, 1.62], to: [0.02, -0.36, 1.5], target: [0.0, 0.5, 0.88], targetTo: [0.0, 0.52, 0.86], fov: 40, fovTo: 38, ease: easeInOutSine, roll: 0.06, rollTo: 0.03 }),
+  params: { moonlight: 0.075, lat: 39, lon: 20, spin: 8, sunAz: -152, sunEl: 12, stars: 0.16, su: 0.7 },
 };
 
 export const ancient: ChapterDef = {
@@ -28,20 +28,20 @@ export const ancient: ChapterDef = {
       id: 'an-cradles', stage: 'planet', dur: 8, label: 'The cradles ignite',
       transition: { type: 'blend', dur: 1.5 },
       rig: orbit({ radius: 3.0, radiusTo: 2.8, elev: 0.18, az: -0.1, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.0, 0.15, 0] }),
-      params: { moonlight: 0.16, lat: 28, lon: 70, spin: 60, sunAz: 158, sunEl: 10, stars: 0.18, su: 0.75 },
+      params: { moonlight: 0.075, lat: 28, lon: 70, spin: 60, sunAz: 158, sunEl: 10, stars: 0.18, su: 0.75 },
     },
     empires,
     {
       id: 'an-threads', stage: 'planet', dur: 5.5, label: 'Threads', signature: true,
       transition: { type: 'blend', dur: 1.6 },
-      rig: orbit({ radius: 3.0, radiusTo: 2.85, elev: 0.22, az: -0.05, azTo: 0.08, fov: 34, ease: easeInOutSine, targetOffset: [0.0, 0.2, 0] }),
-      params: { moonlight: 0.16, lat: 30, lon: 72, spin: 14, sunAz: 165, sunEl: 8, stars: 0.18, su: 0.6 },
+      rig: push({ from: [-1.05, 0.12, 1.25], to: [-0.95, 0.16, 1.2], target: [0.45, 0.3, 0.75], targetTo: [0.5, 0.32, 0.72], fov: 38, ease: easeInOutSine, roll: -0.1, rollTo: -0.08 }),
+      params: { moonlight: 0.075, lat: 30, lon: 72, spin: 14, sunAz: 165, sunEl: 8, stars: 0.18, su: 0.6 },
     },
     {
       id: 'an-plague', stage: 'planet', dur: 3.5, label: 'The plague', signature: true,
       transition: { type: 'blend', dur: 1.2 },
-      rig: orbit({ radius: 2.5, radiusTo: 2.4, elev: 0.16, az: 0.0, azTo: 0.05, fov: 32, ease: easeInOutSine, targetOffset: [0.0, 0.12, 0] }),
-      params: { moonlight: 0.16, lat: 42, lon: 30, spin: 5, sunAz: 160, sunEl: 10, stars: 0.16, su: 0.55 },
+      rig: push({ from: [0.0, 0.05, 1.82], to: [0.0, 0.03, 1.7], target: [0.0, 0.02, 0.98], fov: 34, fovTo: 32, ease: easeInOutSine }),
+      params: { moonlight: 0.075, lat: 44, lon: 14, spin: 5, sunAz: 160, sunEl: 10, stars: 0.16, su: 0.32 },
     },
   ],
 };
