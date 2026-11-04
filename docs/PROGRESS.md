@@ -20,18 +20,17 @@
 - [ ] PROGRESS.md shows every phase checked
 
 ## Current phase
-Phase 6 → 7 — Coda verified structurally; full-Odyssey pacing run; reviewer passes over all chapters
+Phase 7 — reviewer passes (A done for all chapters; B in progress), polish
 
 ## Last completed
-- Chapters 0–10 all built and rendering. Regime B: GalaxySim + worker + host, Expansion (ring→disk, bloom, over-the-shoulder neighbours), Contest cut from each run's history (beats, time keys, shots, chronicle, faction motifs, tension), slow-time probes/fleets from the capture log.
-- Coda: saturation of held galaxies, candles, counter to 10^100, black holes with screen-space lensing and Hawking flashes, last point, Recorder montage, 5 s true black, Return replaying the Prologue exactly with the victor's spark (saved; vacuum → white), timeline ring, rest → new run.
-- e2e: smoke (Begin; deep links into all chapters) + spark persistence (vacuum and victor seeds).
-- Scripts: capture-shots (against `vite preview`), odyssey-run (hands-free pacing contact sheet), probe-frame, debug-page, watch-galaxy, galaxy-batch.
+- Review pass A over all 39 signature frames (docs/reviews/passA-*.md) and the fixes listed in docs/reviews/README.md.
+- Full hands-free Odyssey pacing run (chapters 0–9) and a run through the Coda: no console errors; the montage plays the run's own recorded frames backward; 5 s of black; the Return; the ring.
+- Dead air removed (microbial field divergence); night sides legible; Contest legible.
+- CI: build + unit + 50-seed balance + e2e jobs pass; the deploy job waits only for GitHub Pages to be switched on in the repository settings.
 
 ## Next action
-1. Finish the full Odyssey pacing run (`scripts/odyssey-run.mjs captures/odyssey`), build the contact sheet, check pacing/dead air and the montage.
-2. Fresh captures of all signature shots (ch 0–10) → reviewer pass A (all chapters) → fixes → passes B and C. Save reports in docs/reviews/.
-3. Phase 8: README captures (docs/media), final DoD verification, PROGRESS summary.
+1. Review pass B (captures/passB, captures/passB_g) → fixes → pass C → fixes.
+2. Final full pacing run on the final build; README captures (docs/media); DoD verification; final summary.
 
 ## Known issues
 - Headless captures must use `?backend=webgl` (see D14).

@@ -47,3 +47,13 @@ Every autonomous decision is recorded here with a short rationale. Newest at the
 - **D32 — The chronicle is retroactive where it must be**: "went silent … It did not answer again" is only written if the faction indeed never re-emerged (the whole history exists before it is shown). Repeated lines per pair are muted for hundreds of Myr.
 - **D33 — The Contest is edited, not just played**: `buildContest` picks up to nine beats by weight (awakenings, betrayals, extinctions, the collision, the bubble), gives each screen time ∝ weight, and builds both the Odyssey time keys and the shots (regional, galactic, grazing, collision framings) from the run's own history.
 - **D34 — Galaxy rendering in kpc**: ~800k stars (high tier) with flux-conserving minimum pixel size, emission nebulae, absorbing dust sprites, per-node territory sprites sized to local node spacing whose patterns are evaluated in world space (each faction's visual language in its own shader branch), interference moiré on contested fronts, streaks for RKVs/probes/fleets, beams, novae, and a vacuum bubble that erases everything inside it.
+
+## Phases 6–7
+
+- **D35 — Captures run against `vite preview` (the built `dist/`), never the dev server**: Vite's hot reload restarted pages mid-capture while code was being edited, which produced flaky white frames and timeouts.
+- **D36 — The hands-free pacing run is the end-to-end test** (`scripts/odyssey-run.mjs`): it found the microbial field divergence (dead air) that no deep-link capture could, because it needs the history of a continuous run. Capture-mode frames may step up to 1 s so a full run fits in about an hour of software rendering.
+- **D37 — Bounded integrators everywhere a fate projection can rescale a field**: Gray–Scott values are clamped to [0,1] each step, projections rescale by at most 3× and top up the remainder uniformly so milestones still land exactly.
+- **D38 — Post grade**: AgX output is expanded ×1.1 (clamped) so hero emitters reach display white; saturation 1.28 to restore the palettes AgX desaturates; non-finite pixels are cleaned before bloom.
+- **D39 — Contest legibility over literalism**: an empire's interior is a whisper (presence-weighted: small powers are drawn brighter), contested fronts are two-colour interference fringes, and the chronicle drops any line that has fallen behind the picture.
+- **D40 — The Return ring closes around the first cell**: the timeline curls into a ring centred on the protocell's projected position, so the end visibly meets the beginning.
+- **D41 — Consistent sun side per chapter** (right for chapters 1–3, left for 4–7) so cuts between orbital shots don't jump; night globes use varied framings (limb arcs, regional close-ups, a small disc with negative space).
