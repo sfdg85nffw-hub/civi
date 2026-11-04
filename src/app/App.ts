@@ -473,9 +473,9 @@ export class App {
         this.chronQueue = this.chronQueue.filter((e) => keep.includes(e));
       }
     } else if (t1 < t0) this.chronQueue = [];
-    if (this.chronQueue.length && this.clock - this.lastChronPush > 1.7) {
+    if (this.chronQueue.length && this.clock - this.lastChronPush > 2.4) {
       const e = this.chronQueue.shift()!;
-      this.chronicle.push(formatEpoch(e.t) + '.', ' ' + e.text, 6.5);
+      this.chronicle.push(formatEpoch(e.t) + '.', ' ' + e.text, 5.5);
       this.lastChronPush = this.clock;
       // the actor's motif; a nova is heard as a far boom; the vacuum is silent
       const actor = e.a >= 0 ? e.a : e.b;

@@ -15,7 +15,7 @@ export class Chronicle {
     if (when) el('span', 'when', node, when);
     node.appendChild(document.createTextNode(text));
     this.entries.push({ node, age: 0, life });
-    while (this.entries.length > 3) {
+    while (this.entries.length > 2) {
       const e = this.entries.shift()!;
       e.node.remove();
     }
