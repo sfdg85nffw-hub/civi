@@ -206,7 +206,8 @@ export class VentStage extends Stage {
       const d = length(p.sub(mi.xyz));
       const lip = exp(d.mul(-11.0)).mul(mi.w);
       const mottle = mx_noise_float(p.mul(14.0)).mul(0.5).add(0.5).clamp(0.0, 1.0);
-      em = em.add(vec3(1.0, 0.3, 0.06).mul(lip.mul(mottle.mul(0.7).add(0.3)).mul(0.9)));
+      const core = exp(d.mul(-32.0)).mul(mi.w).mul(1.6);
+      em = em.add(vec3(1.0, 0.3, 0.06).mul(lip.mul(mottle.mul(0.7).add(0.3)).mul(1.35))).add(vec3(1.0, 0.62, 0.3).mul(core));
     }
     m.emissiveNode = em.mul(this.uGlow);
     return m;
@@ -298,7 +299,7 @@ export class VentStage extends Stage {
         const center = mi.xyz.add(vec3(0, h.add(0.02), 0)).add(curl).add(spread).add(vec3(h.mul(0.08), 0, h.mul(0.03)));
         const size = h.mul(0.34).add(0.1).mul(w);
         const base = exp(h.div(w.mul(0.55).add(0.05)).negate()).mul(glow).mul(mi.w);
-        const col = vec3(0.65, 0.12, 0.02).mul(base.mul(0.9)).add(vec3(0.0011, 0.0012, 0.0014));
+        const col = vec3(0.65, 0.12, 0.02).mul(base.mul(0.3)).add(vec3(0.0009, 0.001, 0.0012));
         const alpha = sstep(0.0, 0.025, ph).mul(float(1).sub(sstep(0.55, 1.0, ph))).mul(0.55).mul(mi.w.min(1.0)).mul(this.uReveal.mul(0.5).add(0.5));
         return { center, size, color: col, alpha, rotation: at.b.z.mul(6.28).add(t.mul(0.15)) };
       },

@@ -97,7 +97,7 @@ PlanetStage.overlays[5] = (stage, f) => {
         const i = (y * fld.w + x) * 4;
         void blur;
         const b = d[i + 3]! * (0.25 + f.lodMix * 0.4);
-        return [blur(0) * 0.028 + b * d[i]! * 0.1, blur(1) * 0.028 + b * d[i + 1]! * 0.1, blur(2) * 0.028 + b * d[i + 2]! * 0.1];
+        return [blur(0) * 0.055 + b * d[i]! * 0.14, blur(1) * 0.055 + b * d[i + 1]! * 0.14, blur(2) * 0.055 + b * d[i + 2]! * 0.14];
       });
     }
   }
@@ -205,7 +205,7 @@ PlanetStage.overlays[6] = (stage, f) => {
   stage.setEmissive((ag?.version ?? 0) * 1000 + Math.floor(year * 4), EW, EH, (x, y) => {
     const v = Math.min(2.5, lightAcc[y * EW + x]!) * 1.4;
     // sodium orange early, whiter with LEDs late
-    return [v * 1.0, v * (0.55 + 0.25 * elec), v * (0.22 + 0.35 * elec)];
+    return [v * 1.0, v * (0.52 + 0.14 * elec), v * (0.2 + 0.16 * elec)];
   });
   // agents: vehicles; and the two signal moments (Trinity, Apollo 11)
   const nV = snap ? Math.max(0, snap.count - MODERN_CITIES.length) : 0;
@@ -239,7 +239,7 @@ PlanetStage.overlays[6] = (stage, f) => {
     f.cue('mote');
     const D = Math.PI / 180;
     const base = [Math.cos(28.6 * D) * Math.sin(-80.6 * D), Math.sin(28.6 * D), Math.cos(28.6 * D) * Math.cos(-80.6 * D)];
-    const up = 1.004 + m * m * 0.9;
+    const up = 1.02 + m * 1.4;
     stage.bolideU.pos.value.set(base[0]! * up + m * 0.25, base[1]! * up + m * 0.1, base[2]! * up);
     stage.bolideU.vel.value.set(base[0]! + 0.3, base[1]! + 0.1, base[2]!);
     stage.bolideU.on.value = Math.sin(Math.PI * Math.min(1, m * 1.1)) * 0.9;
@@ -267,7 +267,7 @@ PlanetStage.overlays[7] = (stage, f) => {
   });
   stage.setEmissive(77, EW, EH, (x, y) => {
     const v = Math.min(2.5, lightAcc[y * EW + x]!) * 1.4;
-    return [v, v * 0.8, v * 0.57];
+    return [v, v * 0.62, v * 0.27];
   });
   const ag = f.agents;
   const snap = ag && ag.sim === 'lattice' ? ag.snap : null;

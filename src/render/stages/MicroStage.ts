@@ -390,6 +390,8 @@ export class MicroStage extends Stage {
     u.colonies.value = Number(shot.def.params?.colonies ?? 0) * smoothstep(0.0, 0.25, shot.u);
     // the colonies are the subject: the mat beneath them recedes
     u.fieldGain.value *= 1 - 0.6 * u.colonies.value;
+    // the rods would pierce the colonies like needles: they leave the frame to the spheres
+    this.cellMesh.visible = u.colonies.value < 0.3;
     this.uploadAgents(f);
     void shot;
   }

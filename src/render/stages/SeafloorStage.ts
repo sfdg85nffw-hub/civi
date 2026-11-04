@@ -49,7 +49,8 @@ export class SeafloorStage extends Stage {
     this.scene.background = new THREE.Color(0, 0, 0);
     const u = this.u;
     const waterCol = mix(vec3(0.006, 0.03, 0.045), vec3(0.002, 0.008, 0.016), u.cambrian);
-    this.scene.fogNode = fog(waterCol, densityFogFactor(float(0.11)));
+    // depth fog swallows the horizon: no hard edge between floor and water
+    this.scene.fogNode = fog(waterCol, densityFogFactor(float(0.19)));
     this.scene.add(this.waterDome());
     this.scene.add(this.sand());
     this.scene.add(this.godRays());

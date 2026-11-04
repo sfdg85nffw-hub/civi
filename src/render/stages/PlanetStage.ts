@@ -420,7 +420,7 @@ export class PlanetStage extends Stage {
       // individual lights: crisp points at two scales (towns, then the scatter around them)
       const wp1 = mx_worley_noise_float(n.mul(210.0));
       const wp2 = mx_worley_noise_float(n.mul(560.0).add(3.0));
-      const sp1 = sst(0.3, 0.04, wp1).mul(sst(u.speckleLo.sub(0.3), 1.0, vnoise(n.mul(40.0), 'a').mul(0.5).add(0.5)).mul(0.6).add(0.4));
+      const sp1 = sst(0.3, 0.04, wp1).mul(sst(-0.25, 0.6, mx_noise_float(n.mul(38.0))).mul(0.6).add(0.4));
       const sp2 = sst(0.26, 0.03, wp2);
       const speck = mix(float(1.0), sp1.mul(1.1).add(sp2.mul(0.9)), u.speckle);
       // people cluster along coasts and rivers: weight by proximity to the sea and a clustering field
@@ -585,7 +585,7 @@ export class PlanetStage extends Stage {
         const p = B.pos.sub(normalize(B.vel).mul(k.mul(0.35)));
         const head = sst(0.08, 0.0, k);
         // a hard white point with a short, faint wake (not a smear)
-        const col = mix(vec3(1.0, 0.45, 0.15), vec3(1.0, 0.97, 0.9), head).mul(float(1.0).sub(k).pow(3.0).mul(0.25).add(head.mul(16.0))).mul(B.on);
+        const col = mix(vec3(1.0, 0.45, 0.15), vec3(1.0, 0.97, 0.9), head).mul(float(1.0).sub(k).pow(3.0).mul(0.25).add(head.mul(40.0))).mul(B.on);
         return { center: p, size: mix(float(0.012), float(0.004), k).mul(B.size), color: col };
       },
     });
@@ -607,7 +607,7 @@ export class PlanetStage extends Stage {
         // only on the night side (fires and lamps); faint on the day side
         const nW = normalize(T.modelWorldMatrix.mul(vec4(at.a.xyz, 0.0)).xyz);
         const night = sst(0.15, -0.2, dot(nW, u.sun)).mul(0.85).add(0.15);
-        return { center: at.a.xyz.mul(1.003), size: at.a.w, color: at.b.xyz.mul(flick).mul(night) };
+        return { center: at.a.xyz.mul(at.a.w.mul(0.55).add(1.003)), size: at.a.w, color: at.b.xyz.mul(flick).mul(night) };
       },
     });
     (mesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;

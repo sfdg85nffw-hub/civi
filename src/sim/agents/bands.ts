@@ -72,18 +72,29 @@ function inRegion(r: Region, lat: number, lon: number): boolean {
   return lat >= r.lat[0] && lat <= r.lat[1] && lon >= r.lon[0] && lon <= r.lon[1];
 }
 
+/** soft membership: regions feather out over ~5° so ranges never show as rectangles */
+function regionSoft(r: Region, lat: number, lon: number): number {
+  const F = 5;
+  const ss = (a: number, b: number, x: number): number => {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  return ss(r.lat[0] - F, r.lat[0] + F, lat) * ss(r.lat[1] + F, r.lat[1] - F, lat) * ss(r.lon[0] - F, r.lon[0] + F, lon) * ss(r.lon[1] + F, r.lon[1] - F, lon);
+}
+
 /** 0..1: how strongly lineage L may occupy (lat, lon) at time T (soft arrival ramps). */
 export function rangeWeight(L: Lineage, lat: number, lon: number, T: number): number {
   let w = 0;
   for (const [l, rn, from, to] of RANGES) {
     if (l !== L) continue;
     const r = R[rn]!;
-    if (!inRegion(r, lat, lon)) continue;
+    const m = regionSoft(r, lat, lon);
+    if (m <= 0) continue;
     const span = Math.min(to, 0) - from;
     const rampLen = Math.min(Math.max(span * 0.08, 2500), 60000);
     const ramp = Math.min(1, Math.max(0, (T - from) / rampLen));
     const fade = Math.min(1, Math.max(0, (to - T) / rampLen));
-    w = Math.max(w, ramp * fade);
+    w = Math.max(w, ramp * fade * m);
   }
   return w;
 }

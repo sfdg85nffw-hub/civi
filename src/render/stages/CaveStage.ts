@@ -110,13 +110,13 @@ export class CaveStage extends Stage {
     mat.colorNode = Fn(() => {
     const rock = mix(vec3(0.33, 0.27, 0.2), vec3(0.45, 0.38, 0.29), vnoise(w.mul(2.0), 'g').mul(0.5).add(0.5));
     const stains = vfbm(w.mul(1.2));
-    let alb: N = mix(rock, vec3(0.24, 0.2, 0.15), sst(0.0, 0.5, stains).mul(0.28));
+    let alb: N = mix(rock, vec3(0.28, 0.23, 0.17), sst(0.0, 0.5, stains).mul(0.12));
     // flowstone streaks
     alb = mix(alb, vec3(0.5, 0.45, 0.38), sst(0.62, 0.92, vnoise(vec3(w.x.mul(7.0), w.y.mul(2.2), w.x.mul(1.3)), 'b').mul(0.5).add(0.5)).mul(0.12));
     // the hands, appearing one by one
     const pig = vec3(0).toVar();
     const cover = float(0).toVar();
-    const tones = [vec3(0.42, 0.08, 0.04), vec3(0.55, 0.22, 0.06), vec3(0.06, 0.05, 0.05)];
+    const tones = [vec3(0.55, 0.07, 0.03), vec3(0.7, 0.24, 0.05), vec3(0.04, 0.035, 0.035)];
     for (let i = 0; i < HANDS.length; i++) {
       const hw = this.handUW.element(i);
       const appear = sst(hw.y, hw.y.add(0.07), u.x);

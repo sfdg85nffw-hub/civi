@@ -134,19 +134,21 @@ export function spireCluster(rng: Rng, height: number, radius: number, branches:
   };
   chain([0, -0.3, 0], [0, 1, 0], height + 0.3, radius * 1.5, radius * 0.38, 14, 0.18);
   for (let k = 0; k < branches; k++) {
-    const h0 = rng.range(0.22, 0.6) * height;
+    // organ-pipe offshoots: near-vertical, clustered, of very different heights (not splayed fingers)
+    const h0 = rng.range(0.12, 0.55) * height;
     const ang = rng.range(0, Math.PI * 2);
-    const out = rng.range(0.25, 0.5);
-    chain([Math.cos(ang) * radius * 0.6, h0, Math.sin(ang) * radius * 0.6], nrm([Math.cos(ang) * out, 1, Math.sin(ang) * out]), rng.range(0.3, 0.55) * height, radius * rng.range(0.55, 0.8), radius * 0.26, 8, 0.25);
+    const out = rng.range(0.06, 0.24);
+    chain([Math.cos(ang) * radius * 0.75, h0, Math.sin(ang) * radius * 0.75], nrm([Math.cos(ang) * out, 1, Math.sin(ang) * out]), rng.range(0.18, 0.75) * height, radius * rng.range(0.5, 0.85), radius * rng.range(0.2, 0.34), 8, 0.3);
   }
-  const knobs = Array.from({ length: 34 }, () => {
+  const knobs = Array.from({ length: 60 }, () => {
     const s = segs[rng.int(0, segs.length - 1)]!;
     const t = rng.next();
     const ang = rng.range(0, Math.PI * 2);
     const r = lerp(s.ra, s.rb, t);
     return { c: [lerp(s.a[0], s.b[0], t) + Math.cos(ang) * r * 0.9, lerp(s.a[1], s.b[1], t), lerp(s.a[2], s.b[2], t) + Math.sin(ang) * r * 0.9] as V3, r: r * rng.range(0.25, 0.55) };
   });
-  const flanges = Array.from({ length: 3 }, () => ({ y: rng.range(0.25, 0.8) * height, w: radius * rng.range(0.5, 0.95), dir: rng.range(0, Math.PI * 2) }));
+  // beehive ledges where hot fluid pooled and mineralised
+  const flanges = Array.from({ length: 5 }, () => ({ y: rng.range(0.15, 0.85) * height, w: radius * rng.range(0.6, 1.25), dir: rng.range(0, Math.PI * 2) }));
   const sdf = (x: number, y: number, z: number): number => {
     let d = 1e9;
     for (const s of segs) d = smin(d, capsuleDist(x, y, z, s.a, s.b, s.ra, s.rb), 0.22 * radius);
@@ -179,14 +181,18 @@ export function buildVentGeometry(): VentGeometry {
   const rng = new Rng(VENT_SEED, 1);
   const meshes: MeshData[] = [];
   const mouthsAll: V3[] = [];
+  const firstTop: number[] = [];
   const add = (o: V3, h: number, r: number, br: number, st: number, keepTops: boolean): void => {
     const { mesh, tops } = spireCluster(rng, h, r, br, st);
     meshes.push({ positions: mesh.positions, indices: mesh.indices, normals: vertexNormals(mesh.positions, mesh.indices), offset: o });
-    if (keepTops) for (const t of tops) mouthsAll.push([o[0] + t[0], o[1] + t[1] - 0.05, o[2] + t[2]]);
+    if (keepTops) {
+      firstTop.push(mouthsAll.length);
+      for (const t of tops) mouthsAll.push([o[0] + t[0], o[1] + t[1] - 0.05, o[2] + t[2]]);
+    }
   };
-  add([0, 0, 0], 5.2, 0.62, 3, 0.07, true);
-  add([-4.4, 0, -5.0], 4.0, 0.55, 2, 0.1, true);
-  add([4.3, 0, -6.2], 3.2, 0.5, 1, 0.1, true);
+  add([0, 0, 0], 5.2, 0.62, 5, 0.07, true);
+  add([-4.4, 0, -5.0], 4.0, 0.55, 3, 0.1, true);
+  add([4.3, 0, -6.2], 3.2, 0.5, 2, 0.1, true);
   add([5.2, -0.4, 10.5], 7.0, 0.8, 1, 0.12, false);
   for (let i = 0; i < 7; i++) {
     const o: V3 = [rng.range(-6, 6), -0.05, rng.range(-4, 5)];
@@ -214,6 +220,7 @@ export function buildVentGeometry(): VentGeometry {
     }
   const findices = new Uint32Array(fidx);
   const floor: MeshData = { positions: fpos, indices: findices, normals: vertexNormals(fpos, findices), offset: [0, 0, 0] };
-  const mouths: V3[] = [mouthsAll[0]!, mouthsAll[1]!, mouthsAll[2]!, mouthsAll[4]!, mouthsAll[7]!];
+  // the hero trunk and two of its pipes, then the trunks of the two other clusters
+  const mouths: V3[] = [mouthsAll[firstTop[0]!]!, mouthsAll[firstTop[0]! + 1]!, mouthsAll[firstTop[0]! + 2]!, mouthsAll[firstTop[1]!]!, mouthsAll[firstTop[2]!]!];
   return { meshes, mouths, floor };
 }
