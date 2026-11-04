@@ -25,7 +25,7 @@ export const hominins: ChapterDef = {
       id: 'h-ooa', stage: 'planet', dur: 6, label: 'Out of Africa', signature: true,
       transition: { type: 'fade', dur: 1.2 },
       rig: orbit({ radius: 5.6, radiusTo: 5.1, elev: 0.12, elevTo: 0.08, az: 0.0, azTo: 0.1, fov: 32, ease: easeInOutSine, targetOffset: [-1.05, 0.05, 0] }),
-      params: { moonlight: 0.075, lat: 28, lon: 55, spin: 24, sunAz: 152, sunEl: 10, stars: 0.2, su: 0.75 },
+      params: { moonlight: 0.075, lat: 28, lon: 55, spin: 24, sunAz: -152, sunEl: 10, stars: 0.2, su: 0.75 },
     },
     {
       id: 'h-hands', stage: 'cave', dur: 4, label: 'Handprints', signature: true,

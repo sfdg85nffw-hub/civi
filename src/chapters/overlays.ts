@@ -57,7 +57,8 @@ PlanetStage.overlays[4] = (stage, f) => {
 let threads: ThreadsLayer | null = null;
 function ensureThreads(stage: PlanetStage): ThreadsLayer {
   if (!threads) {
-    threads = new ThreadsLayer();
+    // ancient trade: broad, soft gold silk
+    threads = new ThreadsLayer(undefined, [1.0, 0.7, 0.32], 1.004, 0.18, 0.0042);
     stage.overlay.add(threads.mesh);
   }
   return threads;
@@ -149,7 +150,7 @@ const EW = 180, EH = 90;
 const lightAcc = new Float32Array(EW * EH);
 function ensureModern(stage: PlanetStage): void {
   if (!lanes) {
-    lanes = new ThreadsLayer(SEA_LANES.map((l, k) => ({ name: 'lane' + k, ...l })) as Route[], [0.75, 0.82, 0.95], 1.003, 0.3);
+    lanes = new ThreadsLayer(SEA_LANES.map((l, k) => ({ name: 'lane' + k, ...l })) as Route[], [0.78, 0.84, 0.95], 1.003, 0.3, 0.0018);
     stage.overlay.add(lanes.mesh);
     const byName = new Map(MODERN_CITIES.map((c) => [c[0], c] as const));
     const links: Route[] = [];
@@ -157,7 +158,8 @@ function ensureModern(stage: PlanetStage): void {
       const A = byName.get(a), B = byName.get(b);
       if (A && B) links.push({ name: a + '-' + b, from: 1988, to: 3000, weight: 0.8, pts: [[A[1], A[2]], [B[1], B[2]]] });
     }
-    mesh = new ThreadsLayer(links, [0.45, 0.95, 1.0], 1.009, 0.9);
+    // the fibre mesh: hair-thin cyan with fast pulses
+    mesh = new ThreadsLayer(links, [0.35, 0.92, 1.0], 1.009, 1.6, 0.0013);
     stage.overlay.add(mesh.mesh);
   }
   if (!footprints) {

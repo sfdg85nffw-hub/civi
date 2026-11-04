@@ -22,7 +22,7 @@ export class ThreadsLayer {
     sun: uniform(new THREE.Vector3(1, 0, 0)),
   };
 
-  constructor(routes: Route[] = ROUTES, color: [number, number, number] = [1.0, 0.72, 0.35], altitude = 1.004, speed = 0.18) {
+  constructor(routes: Route[] = ROUTES, color: [number, number, number] = [1.0, 0.72, 0.35], altitude = 1.004, speed = 0.18, width = 0.0026) {
     const pts: number[] = [];
     const meta: number[] = [];
     routes.forEach((r, ri) => {
@@ -69,7 +69,7 @@ export class ThreadsLayer {
         const gold = mix(vec3(color[0], color[1], color[2]), vec3(1.0, 0.95, 0.85), bead.min(1.0));
         const tint = mix(mix(gold, vec3(0.32, 0.3, 0.28), dark), vec3(1.0, 0.18, 0.08), edge.mul(0.85));
         const col = tint.mul(float(0.22).add(bead).add(edge.mul(1.4))).mul(at.b.z).mul(active).mul(u.vis).mul(plagueDim).mul(night).mul(0.5);
-        return { center: at.a.xyz.mul(altitude), size: float(0.0026).add(bead.mul(0.0025)), color: col.mul(0.6) };
+        return { center: at.a.xyz.mul(altitude), size: float(width).add(bead.mul(width)), color: col.mul(0.6) };
       },
     });
     void abs;

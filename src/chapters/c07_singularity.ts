@@ -10,7 +10,7 @@ const pattern: ShotDef = {
   id: 'si-pattern', stage: 'planet', dur: 8, label: 'The pattern', signature: true,
   transition: { type: 'blend', dur: 1.6 },
   rig: orbit({ radius: 2.75, radiusTo: 2.35, elev: 0.32, elevTo: 0.22, az: -0.18, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.0, 0.18, 0] }),
-  params: { moonlight: 0.07, lat: 32, lon: 22, spin: 30, sunAz: 168, sunEl: 9, stars: 0.16, su: 0.55 },
+  params: { moonlight: 0.07, lat: 32, lon: 22, spin: 30, sunAz: -168, sunEl: 9, stars: 0.16, su: 0.55 },
 };
 
 export const singularity: ChapterDef = {
@@ -30,7 +30,7 @@ export const singularity: ChapterDef = {
       id: 'si-resistance', stage: 'planet', dur: 5, label: 'Resistance',
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ radius: 2.35, radiusTo: 2.2, elev: -0.1, elevTo: -0.16, az: 0.1, azTo: -0.05, fov: 32, ease: easeInOutSine, targetOffset: [0.0, -0.1, 0] }),
-      params: { lat: -18, lon: 24, spin: 14, sunAz: 172, sunEl: -6, stars: 0.16, su: 0.3 },
+      params: { lat: -18, lon: 24, spin: 14, sunAz: -172, sunEl: -6, stars: 0.16, su: 0.3 },
     },
     {
       // low orbit over the South Atlantic: one warm point in a sea of cold crystal — and then not

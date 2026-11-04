@@ -21,8 +21,8 @@ export const animals: ChapterDef = {
     {
       id: 'a-greening', stage: 'planet', dur: 7, label: 'Greening and drift',
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: orbit({ radius: 4.6, radiusTo: 4.1, elev: 0.18, elevTo: 0.1, az: -0.2, azTo: 0.15, fov: 34, ease: easeInOutSine, targetOffset: [-0.45, 0, 0] }),
-      params: { lat: 5, lon: 15, spin: 50, sunAz: -100, sunEl: 20, stars: 0.12, su: 0.7 },
+      rig: orbit({ radius: 4.6, radiusTo: 4.1, elev: 0.18, elevTo: 0.1, az: -0.2, azTo: 0.15, fov: 34, ease: easeInOutSine, targetOffset: [0.45, 0, 0] }),
+      params: { lat: 5, lon: 15, spin: 50, sunAz: 100, sunEl: 20, stars: 0.12, su: 0.7 },
     },
     life,
     {
@@ -46,8 +46,8 @@ export const animals: ChapterDef = {
     {
       id: 'a-recovery', stage: 'planet', dur: 3.5, label: 'The mammals inherit',
       transition: { type: 'dissolve', dur: 1.2 },
-      rig: orbit({ radius: 4.3, radiusTo: 4.6, elev: 0.15, az: -0.15, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [-0.4, 0, 0] }),
-      params: { lat: 15, lon: 30, spin: 30, sunAz: -128, sunEl: 16, stars: 0.12, su: 0.7 },
+      rig: orbit({ radius: 4.3, radiusTo: 4.6, elev: 0.15, az: -0.15, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.4, 0, 0] }),
+      params: { lat: 15, lon: 30, spin: 30, sunAz: 128, sunEl: 16, stars: 0.12, su: 0.7 },
     },
   ],
 };
