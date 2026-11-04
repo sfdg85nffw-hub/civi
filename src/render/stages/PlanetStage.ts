@@ -85,6 +85,8 @@ export class PlanetStage extends Stage {
     time: uniform(0),
     landLevel: uniform(0.3),
     o2: uniform(0),
+    hazeSplit: uniform(0),
+    hazeDir: uniform(new THREE.Vector3(1, 0, 0)),
     ice: uniform(0),
     oceanIron: uniform(1),
     bandedIron: uniform(0),
@@ -108,6 +110,8 @@ export class PlanetStage extends Stage {
     lastLightDir: uniform(new THREE.Vector3(0, 0, 1)),
     datacenters: uniform(0),
     moonlight: uniform(0.035),
+    /** per-shot gain on the night-side emissive field (the polity wash in Chapter 5) */
+    wash: uniform(1),
     speckleLo: uniform(0.72),
     stars: uniform(0.2),
     limb: uniform(1.6),
@@ -180,7 +184,7 @@ export class PlanetStage extends Stage {
 
   get atmoUniforms(): AtmoUniforms {
     const u = this.u;
-    return { sun: u.sun, sunI: u.sunI, rayleigh: u.rayleigh, mie: u.mie, hazeS: u.hazeS, hazeA: u.hazeA, haze: u.haze, density: u.density };
+    return { sun: u.sun, sunI: u.sunI, rayleigh: u.rayleigh, mie: u.mie, hazeS: u.hazeS, hazeA: u.hazeA, haze: u.haze, density: u.density, hazeSplit: u.hazeSplit, hazeDir: u.hazeDir };
   }
 
   build(): void {
@@ -335,7 +339,7 @@ export class PlanetStage extends Stage {
       const leads = sst(0.985, 0.998, float(1.0).sub(abs(mx_noise_float(n.mul(vec3(7.0, 4.0, 7.0)).add(d1.mul(1.4)))))).mul(land.oneMinus());
       const slush = sst(0.22, 0.0, absLat).mul(snowball).mul(sst(0.2, 0.7, d1.mul(0.5).add(0.5)));
       // glacial white-blue, with deeper blue in the compressed old ice
-      let iceCol = mix(vec3(0.66, 0.77, 0.9), vec3(0.9, 0.94, 0.98), sast.mul(0.6).add(d2.mul(0.2)).add(0.2));
+      let iceCol = mix(vec3(0.56, 0.71, 0.93), vec3(0.8, 0.89, 1.0), sast.mul(0.6).add(d2.mul(0.2)).add(0.2));
       iceCol = mix(iceCol, vec3(0.45, 0.62, 0.82), sst(0.55, 0.85, d1.mul(0.5).add(0.5)).mul(0.25));
       iceCol = mix(iceCol, vec3(0.26, 0.34, 0.42), leads.mul(0.7));
       iceCol = mix(iceCol, vec3(0.36, 0.46, 0.52), slush.mul(0.5));
@@ -409,26 +413,43 @@ export class PlanetStage extends Stage {
       const blanket = sst(u.curtain, u.curtain.mul(0.6), ang).mul(u.crater).mul(0.0);
       const craterG = exp(ang.div(0.025).negate()).mul(u.crater.mul(3.0).add(u.impactFlash.mul(30.0)));
       const sparks = sst(0.93, 0.99, vnoise(n.mul(40.0).add(vec3(0, ct.mul(0.6), 0)), 'a').mul(0.5).add(0.5)).mul(u.ejecta).mul(sst(1.6, 0.3, ang)).mul(sst(u.curtain.mul(0.7), u.curtain, ang));
-      const impactGlow = vec3(1.0, 0.45, 0.12).mul(ring.mul(ringBreak).mul(3.0).add(sparks.mul(2.0))).add(vec3(1.0, 0.85, 0.6).mul(craterG));
+      // the curtain graded from a white-hot leading lip back to soot, torn into radial rays
+      const it1 = normalize(cross(u.impactDir, vec3(0.0, 1.0, 0.0)).add(vec3(0.0, 0.0, 0.0001)));
+      const it2 = cross(u.impactDir, it1);
+      const az = T.atan(dot(n, it2), dot(n, it1));
+      const rays = sst(0.35, 0.95, vnoise(vec3(cos(az).mul(9.0), sin(az).mul(9.0), 1.7), 'a').mul(0.5).add(0.5));
+      const live = sst(0.0, 0.03, u.curtain).mul(float(1.0).sub(sst(0.6, 1.2, u.curtain)));
+      const lip = exp(ang.sub(u.curtain).div(0.012).pow(2.0).negate()).mul(live);
+      const trail = sst(u.curtain.sub(0.14), u.curtain, ang).mul(sst(u.curtain.add(0.008), u.curtain.sub(0.004), ang)).pow(2.0).mul(live);
+      const streak = sst(u.curtain.add(0.16), u.curtain, ang).mul(sst(u.curtain.sub(0.01), u.curtain, ang)).mul(rays.pow(3.0)).mul(live);
+      const coreHot = exp(ang.div(0.006).negate()).mul(u.crater.mul(4.0));
+      const impactGlow = vec3(1.0, 0.92, 0.8).mul(lip.mul(ringBreak).mul(4.5))
+        .add(vec3(1.0, 0.38, 0.08).mul(trail.mul(rays.mul(0.8).add(0.45)).mul(2.4)))
+        .add(vec3(1.0, 0.55, 0.2).mul(streak.mul(1.2)))
+        .add(vec3(1.0, 0.45, 0.12).mul(sparks.mul(2.0)))
+        .add(vec3(1.0, 0.85, 0.6).mul(craterG))
+        .add(vec3(1.0, 0.95, 0.88).mul(coreHot));
+      void ring;
       // ejecta blanket: dark scorched ground inside the curtain
       albedoScorch.assign(sst(u.curtain, u.curtain.mul(0.5), ang).mul(u.crater));
       const glowLava = vec3(1.0, 0.24, 0.04).mul(lava.mul(0.7).add(traps.mul(4.0)).add(craterGlow).add(fire.mul(2.5))).add(impactGlow);
       // night-side emissive layer: a density field broken into points of light (fires, villages, cities)
       // the density grid is coarse (1°): four rotated taps hide its texels
       const tx = vec2(0.6 / 360.0, 0.25 / 180.0), ty = vec2(-0.25 / 360.0, 0.6 / 180.0);
-      const dens = texture(lights, uvE.add(tx)).rgb.add(texture(lights, uvE.sub(tx)).rgb).add(texture(lights, uvE.add(ty)).rgb).add(texture(lights, uvE.sub(ty)).rgb).mul(0.25);
+      const dens = texture(lights, uvE.add(tx)).rgb.add(texture(lights, uvE.sub(tx)).rgb).add(texture(lights, uvE.add(ty)).rgb).add(texture(lights, uvE.sub(ty)).rgb).mul(0.25).mul(u.wash);
       // individual lights: crisp points at two scales (towns, then the scatter around them)
       const wp1 = mx_worley_noise_float(n.mul(210.0));
       const wp2 = mx_worley_noise_float(n.mul(560.0).add(3.0));
-      const sp1 = sst(0.3, 0.04, wp1).mul(sst(-0.25, 0.6, mx_noise_float(n.mul(38.0))).mul(0.6).add(0.4));
-      const sp2 = sst(0.26, 0.03, wp2);
-      const speck = mix(float(1.0), sp1.mul(1.1).add(sp2.mul(0.9)), u.speckle);
+      // small, sparse points (a third of a cell), so no cell lattice shows through the clusters
+      const sp1 = sst(0.17, 0.02, wp1).mul(sst(-0.25, 0.6, mx_noise_float(n.mul(38.0))).mul(0.6).add(0.4));
+      const sp2 = sst(0.14, 0.015, wp2);
+      const speck = mix(float(1.0), sp1.mul(2.2).add(sp2.mul(1.6)), u.speckle);
       // people cluster along coasts and rivers: weight by proximity to the sea and a clustering field
       const coastal = sst(0.55, 0.0, cont).mul(0.75).add(0.25);
       const cluster = sst(0.35, 0.85, vnoise(n.mul(22.0), 'g').mul(0.5).add(0.5));
       // city cores glow continuously; the countryside around them breaks into points
       const core = sst(0.25, 1.2, dens.g);
-      const city0 = dens.mul(mix(float(1.0), mix(speck, float(0.55).add(speck.mul(0.6)), core), u.speckle)).mul(mix(float(1.0), coastal.mul(cluster).mul(1.6).add(0.35), u.speckle));
+      const city0 = dens.mul(mix(float(1.0), mix(speck, float(0.8).add(speck.mul(0.15)), core), u.speckle)).mul(mix(float(1.0), coastal.mul(cluster).mul(1.6).add(0.35), u.speckle));
       // ---- the lattice: a cold, coherent crystal spreading from the datacenters ----
       const dcs = this.dcU;
       // only evaluated once the lattice exists (uniform branch: the other eras pay nothing)
@@ -607,7 +628,19 @@ export class PlanetStage extends Stage {
         // only on the night side (fires and lamps); faint on the day side
         const nW = normalize(T.modelWorldMatrix.mul(vec4(at.a.xyz, 0.0)).xyz);
         const night = sst(0.15, -0.2, dot(nW, u.sun)).mul(0.85).add(0.15);
-        return { center: at.a.xyz.mul(at.a.w.mul(0.55).add(1.003)), size: at.a.w, color: at.b.xyz.mul(flick).mul(night) };
+        // seeds ≥ 10 mark a core/halo pair that must stay concentric: one shared lift, and a
+        // Gaussian falloff instead of a flat disc
+        const pair = step(9.5, at.b.w);
+        const lift = mix(at.a.w.mul(0.55).add(1.003), float(1.0151), pair);
+        return {
+          center: at.a.xyz.mul(lift),
+          size: at.a.w,
+          color: at.b.xyz.mul(flick).mul(night),
+          shape: (q: N) => {
+            const r2 = q.dot(q);
+            return mix(float(1.0).sub(r2).max(0.0).pow(2.6), exp(r2.mul(-7.0)).mul(float(1.0).sub(r2).max(0.0)), pair);
+          },
+        };
       },
     });
     (mesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
@@ -767,6 +800,13 @@ export class PlanetStage extends Stage {
     u.stars.value = Number(p.stars ?? 0.18);
     // moonlight on the night side (per shot): enough to keep the continents legible under the lights
     u.moonlight.value = Number(p.moonlight ?? 0.06);
+    u.wash.value = Number(p.wash ?? 1);
+    // a sky mid-transition (GOE): clear toward the right of frame, haze still holding on the left
+    u.hazeSplit.value = Number(p.hazeSplit ?? 0);
+    if (p.hazeSplit) {
+      this.camera.updateMatrixWorld();
+      (u.hazeDir.value as THREE.Vector3).setFromMatrixColumn(this.camera.matrixWorld, 0).normalize();
+    }
     u.time.value = f.time;
     u.cloudT.value = f.time * 1.0 + (f.T > -1e6 ? 0 : 0);
     // fate-driven appearance

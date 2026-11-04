@@ -95,7 +95,7 @@ export const expansion: ChapterDef = {
     {
       id: 'ex-neighbours', stage: 'galaxy', dur: 8, label: 'Neighbours', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: neighboursRig({ T: 1e7, back: 30, backTo: 42, up: 5, upTo: 7.5, lift: 0.1, fov: 27, fovTo: 23 }),
+      rig: neighboursRig({ T: 1e7, back: 30, backTo: 42, up: 5, upTo: 7.5, lift: 0.085, fov: 24, fovTo: 20 }),
       params: { su: 0.8 },
     },
     {

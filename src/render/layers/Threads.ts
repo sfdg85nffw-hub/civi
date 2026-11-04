@@ -56,7 +56,8 @@ export class ThreadsLayer {
         const yr = u.year;
         const active = sst(at.b.x, at.b.x.add(80.0), yr).mul(float(1.0).sub(sst(at.b.y.sub(40.0), at.b.y.add(40.0), yr)));
         const pulse = fract(at.a.w.mul(at.b.w.mul(1000.0).max(1.0).mul(0.25)).sub(u.time.mul(speed)).add(at.b.w));
-        const bead = sst(0.95, 1.0, pulse).mul(1.6);
+        const head = sst(0.965, 1.0, pulse);
+        const bead = sst(0.78, 1.0, pulse).pow(2.2).mul(1.2).add(head.mul(0.6));
         // the plague front: threads within the front darken, then recover behind it
         const d = T.acos(min(max(dot(normalize(at.a.xyz), u.plagueOrigin), -1.0), 1.0)).mul(180.0 / Math.PI);
         const front = u.plague;
@@ -66,10 +67,10 @@ export class ThreadsLayer {
         const edge = T.exp(T.abs(d.sub(front)).mul(-0.35)).mul(front.greaterThan(0.0).select(float(1.0), float(0.0)));
         const nW = normalize(T.modelWorldMatrix.mul(T.vec4(at.a.xyz, 0.0)).xyz);
         const night = sst(0.2, -0.15, dot(nW, u.sun)).mul(0.85).add(0.15);
-        const gold = mix(vec3(color[0], color[1], color[2]), vec3(1.0, 0.95, 0.85), bead.min(1.0));
+        const gold = mix(vec3(color[0], color[1], color[2]), vec3(1.0, 0.95, 0.85), head.mul(0.6));
         const tint = mix(mix(gold, vec3(0.32, 0.3, 0.28), dark), vec3(1.0, 0.18, 0.08), edge.mul(0.85));
         const col = tint.mul(float(0.22).add(bead).add(edge.mul(1.4))).mul(at.b.z).mul(active).mul(u.vis).mul(plagueDim).mul(night).mul(0.5);
-        return { center: at.a.xyz.mul(altitude), size: float(width).add(bead.mul(width)), color: col.mul(0.6) };
+        return { center: at.a.xyz.mul(altitude), size: float(width).add(head.mul(width * 0.5)), color: col.mul(0.6) };
       },
     });
     void abs;

@@ -39,18 +39,18 @@ export function ventPath(pt: number): CamPose {
   const P: V3 = [PROTOCELL.x, PROTOCELL.y, PROTOCELL.z];
   const M: V3 = [0, 5.2, 0];
   // final macro framing: looking back along orifice→cell so the glow sits out of focus behind,
-  // with the cell on the left third
+  // with the cell centred (the timeline ring closes around it in the Return)
   const d0 = nrm(sub(P, M));
   const d = nrm([d0[0], d0[1] * 0.35, d0[2]]);
   const right = nrm([d[2], 0, -d[0]]);
   const camEnd: V3 = [P[0] + d[0] * 0.25 - right[0] * 0.07, P[1] + d[1] * 0.25 + 0.03, P[2] + d[2] * 0.25 - right[2] * 0.07];
-  const tgtEnd: V3 = [P[0] - right[0] * 0.038, P[1], P[2] - right[2] * 0.038];
+  const tgtEnd: V3 = [P[0], P[1], P[2]];
   const camMid: V3 = [P[0] + d[0] * 1.9 - right[0] * 0.2, P[1] + d[1] * 1.9 + 0.15, P[2] + d[2] * 1.9 - right[2] * 0.2];
   const K: [number, V3, V3, number, number, number][] = [
-    [0.0, [3.1, 3.7, 18.5], [1.9, 5.0, 0], 28, 18.5, 0.0],
-    [3.2, [3.0, 4.0, 15.2], [1.75, 5.1, 0], 28, 15.2, 0.0],
+    [0.0, [3.1, 3.7, 18.5], [0.4, 6.25, 0.3], 28, 18.5, 0.0],
+    [3.2, [3.0, 4.0, 15.2], [0.75, 5.95, 0.3], 28, 15.2, 0.0],
     [6.4, [2.8, 5.0, 9.4], [1.2, 5.45, 0.5], 30, 8.6, 0.15],
-    [8.0, camMid, [P[0] - right[0] * 0.3, P[1], P[2] - right[2] * 0.3], 30, 2.0, 0.7],
+    [8.0, camMid, [P[0] - right[0] * 0.04, P[1], P[2] - right[2] * 0.04], 30, 2.0, 0.7],
     [10.0, camEnd, tgtEnd, 30, 0.25, 1.0],
   ];
   const t = Math.max(0, Math.min(10, pt));
@@ -530,13 +530,13 @@ export class VentStage extends Stage {
   setPrologueTime(pt: number, spark: THREE.Color): void {
     this.pt = pt;
     this.uPT.value = pt;
-    const glow = smoothstep(0.4, 3.6, pt) * (0.9 + 0.1 * noise1(pt * 1.3, 5));
+    const glow = smoothstep(0.25, 2.3, pt) * (0.9 + 0.1 * noise1(pt * 1.3, 5));
     this.uGlow.value = glow;
     this.uReveal.value = smoothstep(2.6, 6.2, pt);
     this.uBack.value = smoothstep(1.5, 6.0, pt);
     (this.uSpark.value as THREE.Color).copy(spark);
     // one orifice first; its siblings and the background spires wake later
-    const wake = [smoothstep(0.3, 2.6, pt), smoothstep(2.4, 4.6, pt), smoothstep(2.9, 5.2, pt), smoothstep(3.6, 6.2, pt), smoothstep(4.0, 6.6, pt)];
+    const wake = [smoothstep(0.2, 1.7, pt), smoothstep(2.4, 4.6, pt), smoothstep(2.9, 5.2, pt), smoothstep(3.6, 6.2, pt), smoothstep(4.0, 6.6, pt)];
     for (let i = 0; i < 5; i++) {
       const m = MOUTHS[i]!;
       const breathe = 0.85 + 0.15 * Math.sin(pt * (1.4 + i * 0.37) + i);

@@ -1,6 +1,6 @@
 import { T, type N } from './T';
 
-const { float, vec3, exp, max, sqrt, dot, Loop, int, If, mix, smoothstep, select } = T;
+const { float, vec3, exp, max, sqrt, dot, Loop, int, If, mix, smoothstep, select, normalize } = T;
 
 /**
  * Physically motivated single scattering (Rayleigh + Mie + an absorbing
@@ -17,6 +17,8 @@ export interface AtmoUniforms {
   hazeA: N; // vec3 haze absorption
   haze: N; // float 0..1
   density: N; // float overall density multiplier
+  hazeSplit: N; // float 0..1: how much the haze clears toward hazeDir (a transition sweeping the disc)
+  hazeDir: N; // vec3 unit direction (world) on the clear side
 }
 
 export const ATMO_R = 1.035;
@@ -53,7 +55,9 @@ export function scatter(ro: N, rd: N, t0: N, t1: N, U: AtmoUniforms, steps: numb
     const h = max(p.length().sub(1.0), 0.0);
     const dR = exp(h.negate().div(HR)).mul(ds);
     const dM = exp(h.negate().div(HM)).mul(ds);
-    const dH = exp(h.negate().div(HH)).mul(ds);
+    // a sky in transition: the haze thins across the disc toward hazeDir
+    const hf = float(1.0).sub(U.hazeSplit.mul(smoothstep(-0.35, 0.55, dot(normalize(p), U.hazeDir))));
+    const dH = exp(h.negate().div(HH)).mul(ds).mul(hf);
     odR.addAssign(dR);
     odM.addAssign(dM);
     odH.addAssign(dH);
@@ -68,7 +72,7 @@ export function scatter(ro: N, rd: N, t0: N, t1: N, U: AtmoUniforms, steps: numb
       const lh = max(lp.length().sub(1.0), 0.0);
       lR.addAssign(exp(lh.negate().div(HR)).mul(lds));
       lM.addAssign(exp(lh.negate().div(HM)).mul(lds));
-      lH.addAssign(exp(lh.negate().div(HH)).mul(lds));
+      lH.addAssign(exp(lh.negate().div(HH)).mul(lds).mul(hf));
     });
     // planet shadow (soft, so the terminator glows)
     const b = dot(p, U.sun);

@@ -77,8 +77,9 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     const transit = Math.min(1.4, share * 0.3);
     const dwell = share - transit;
     const lead = Math.max(3e5, Math.min(1.5e7, (b.t1 - b.t0) * 0.3 + b.t0 * 0.0006));
-    const tA = Math.max(lastT * 1.0000001 + 1, b.t0 - lead);
-    const tB = Math.max(tA + 1e5, b.t1 + lead * 0.8);
+    // the event lands a third of the way into the dwell: a breath of before, then its aftermath
+    const tA = Math.max(lastT * 1.0000001 + 1, b.t0 - lead * 0.55);
+    const tB = Math.max(tA + 1e5, b.t1 + lead * 1.2);
     keys.push([s + transit, tA], [s + transit + dwell, tB]);
     beatStory.push({ s, d: share, b });
     lastT = tB;

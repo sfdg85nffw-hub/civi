@@ -89,13 +89,13 @@ export class CaveStage extends Stage {
     d = min(d, cap([0.012, 0.047], [0.017, 0.135], 0.0098, spr.mul(0.3)));
     d = min(d, cap([0.03, 0.035], [0.045, 0.1], 0.0085, spr));
     d = min(d, cap([-0.04, -0.005], [-0.088, 0.055], 0.011, spr.negate()));
-    d = min(d, cap([0.0, -0.04], [0.0, -0.12], 0.034, float(0.0)));
+    d = min(d, cap([0.0, -0.04], [0.0, -0.075], 0.032, float(0.0)));
     // blown pigment: dense at the edge of the hand, thinning outward, speckled
     const speck = vnoise(vec3(q.mul(260.0), float(i)), 'a').mul(0.5).add(0.5);
     // a wide, soft spray cloud: densest at the hand's edge, thinning over several centimetres
-    const spray = T.exp(d.max(0.0).mul(-38.0)).mul(sst(-0.001, 0.003, d));
+    const spray = T.exp(d.max(0.0).mul(-24.0)).mul(sst(-0.001, 0.003, d));
     const blot = vnoise(vec3(q.mul(14.0), float(i).add(3.0)), 'b').mul(0.35).add(0.75);
-    const halo = spray.mul(blot).mul(sst(0.11, 0.06, d)).mul(1.7).min(1.0);
+    const halo = spray.mul(blot).mul(sst(0.13, 0.07, d)).mul(2.3).min(1.0);
     return halo.mul(speck.mul(0.5).add(0.62));
   }
 
@@ -131,7 +131,7 @@ export class CaveStage extends Stage {
     alb = mix(alb, pig, cover.mul(0.92));
     return alb;
     })();
-    mat.normalNode = normalize(T.normalView.add(T.mx_noise_vec3(w.mul(14.0)).mul(0.35)).add(T.mx_noise_vec3(w.mul(60.0)).mul(0.12)));
+    mat.normalNode = normalize(T.normalView.add(T.mx_noise_vec3(w.mul(14.0)).mul(0.16)).add(T.mx_noise_vec3(w.mul(60.0)).mul(0.08)));
     const m = new THREE.Mesh(geo, mat);
     return m;
   }

@@ -43,7 +43,7 @@ export const singularity: ChapterDef = {
       // Mercury unmade; a swarm of mirrors closes around the Sun and ends as a ring (→ the galaxy)
       id: 'si-swarm', stage: 'solar', dur: 6.5, label: 'The swarm', signature: true,
       transition: { type: 'fade', dur: 1.0 },
-      rig: push({ from: [1.5, 0.08, 0.75], to: [0.0, 3.0, 3.8], target: [1.0, 0.0, 0.3], targetTo: [0, 0, 0], fov: 36, fovTo: 32, ease: easeInOutSine }),
+      rig: push({ from: [1.5, 0.08, 0.75], to: [0.0, 3.0, 3.8], target: [0.55, 0.0, 0.18], targetTo: [0, 0, 0], fov: 36, fovTo: 32, ease: easeInOutSine }),
       params: { su: 0.36 },
     },
   ],

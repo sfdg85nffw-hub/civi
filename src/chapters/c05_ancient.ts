@@ -35,7 +35,7 @@ export const ancient: ChapterDef = {
       id: 'an-threads', stage: 'planet', dur: 5.5, label: 'Threads', signature: true,
       transition: { type: 'blend', dur: 1.6 },
       rig: push({ from: [-1.05, 0.12, 1.25], to: [-0.95, 0.16, 1.2], target: [0.45, 0.3, 0.75], targetTo: [0.5, 0.32, 0.72], fov: 38, ease: easeInOutSine, roll: -0.1, rollTo: -0.08 }),
-      params: { moonlight: 0.16, lat: 30, lon: 72, spin: 14, sunAz: -165, sunEl: 8, stars: 0.18, su: 0.6 },
+      params: { moonlight: 0.085, lat: 30, lon: 72, spin: 14, sunAz: -165, sunEl: 8, stars: 0.18, su: 0.6, wash: 0.35 },
     },
     {
       id: 'an-plague', stage: 'planet', dur: 3.5, label: 'The plague', signature: true,

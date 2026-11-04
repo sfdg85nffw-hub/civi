@@ -29,7 +29,7 @@ export const microbial: ChapterDef = {
       id: 'm-goe', stage: 'planet', dur: 6, label: 'The Great Oxidation (orbital time-lapse)', signature: true,
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ radius: 4.3, radiusTo: 3.9, elev: 0.16, elevTo: 0.1, az: -0.25, azTo: 0.1, fov: 34, ease: easeInOutSine, targetOffset: [0.45, 0, 0] }),
-      params: { lat: 18, lon: 10, spin: 70, sunAz: 72, sunEl: 24, su: 0.6, stars: 0.12 },
+      params: { lat: 18, lon: 10, spin: 70, sunAz: 72, sunEl: 24, su: 0.6, stars: 0.12, hazeSplit: 0.92 },
     },
     {
       id: 'm-snowball', stage: 'planet', dur: 3.5, label: 'Snowball', signature: true,

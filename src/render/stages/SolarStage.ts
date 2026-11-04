@@ -33,7 +33,7 @@ export class SolarStage extends Stage {
   private swarm!: THREE.InstancedMesh;
 
   build(): void {
-    this.post = { bloom: 0.75, threshold: 0.6, exposure: 1.0, grain: 0.03, vignette: 0.4, chroma: 0.001 };
+    this.post = { bloom: 0.42, threshold: 0.7, exposure: 1.0, grain: 0.03, vignette: 0.4, chroma: 0.001 };
     this.camera.near = 0.01;
     this.camera.far = 500;
     this.scene.background = new THREE.Color(0, 0, 0);
@@ -72,7 +72,7 @@ export class SolarStage extends Stage {
       let c = mix(vec3(1.0, 0.55, 0.2), vec3(1.0, 0.92, 0.75), limb).mul(gran.mul(0.25).add(0.85)).mul(cells.mul(0.15).add(0.92));
       c = c.mul(float(1.0).sub(spots.mul(0.6)));
       // the swarm takes the light: the photosphere dims as the mirrors close
-      return vec4(c.mul(limb.mul(0.8).add(0.2)).mul(2.1).mul(float(1.0).sub(u.dyson.mul(0.6))), 1.0);
+      return vec4(c.mul(limb.mul(0.8).add(0.2)).mul(1.35).mul(float(1.0).sub(u.dyson.mul(0.6))), 1.0);
     })();
     return new THREE.Mesh(new THREE.SphereGeometry(SUN_R, 128, 64), mat);
   }
@@ -90,7 +90,7 @@ export class SolarStage extends Stage {
         build: (at) => ({
           center: at.a.xyz,
           size: float(1.25),
-          color: vec3(1.0, 0.86, 0.66).mul(float(1.0).sub(u.dyson.mul(0.7))).mul(0.016),
+          color: vec3(1.0, 0.86, 0.66).mul(float(1.0).sub(u.dyson.mul(0.7))).mul(0.009),
           shape: (q: N) => {
             const r = length(q);
             const ray = vnoise(vec3(T.atan(q.y, q.x).mul(3.0), r.mul(2.0), u.time.mul(0.05)), 'b').mul(0.5).add(0.5);
@@ -146,7 +146,7 @@ export class SolarStage extends Stage {
 
   private buildSwarm(): THREE.InstancedMesh {
     const rng = new Rng(0xd150, 4);
-    const geo = new THREE.CircleGeometry(0.0075, 6);
+    const geo = new THREE.CircleGeometry(0.0048, 6);
     const n = SWARM_N;
     const inst = new Float32Array(n * 4);
     const inst2 = new Float32Array(n * 4);
@@ -191,8 +191,9 @@ export class SolarStage extends Stage {
       const H = normalize(L.add(V));
       const glint = pow(max(abs(dot(nrm, H)), 0.0), 160.0).mul(10.0);
       const facing = dot(nrm, V);
-      const lit = vec3(0.85, 0.82, 0.74).mul(max(facing, 0.0).mul(0.8).add(0.2)).mul(irr).mul(0.85);
-      const heat = vec3(0.5, 0.07, 0.015).mul(irr).mul(0.12);
+      // mostly dark silhouettes against the Sun: faces light up only when they turn toward us
+      const lit = vec3(0.85, 0.82, 0.74).mul(pow(max(facing, 0.0), 3.0).mul(0.9).add(0.04)).mul(irr).mul(0.8);
+      const heat = vec3(0.5, 0.07, 0.015).mul(irr).mul(0.03);
       const shimmer = sin(u.time.mul(2.0).add(B.z.mul(40.0))).mul(0.3).add(0.7);
       const col = facing.greaterThan(0.0).select(lit, heat).add(vec3(1.0, 0.88, 0.66).mul(glint.mul(shimmer).mul(irr)));
       return vec4(col, 1.0);

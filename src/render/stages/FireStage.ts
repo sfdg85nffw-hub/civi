@@ -36,7 +36,7 @@ export class FireStage extends Stage {
   private lastU = 0;
 
   build(): void {
-    this.post = { bloom: 0.7, threshold: 0.25, exposure: 1.0, grain: 0.04, vignette: 0.55, chroma: 0.0015 };
+    this.post = { bloom: 0.45, threshold: 0.4, exposure: 0.9, grain: 0.04, vignette: 0.6, chroma: 0.0015 };
     this.camera.near = 0.02;
     this.camera.far = 400;
     this.scene.background = new THREE.Color(0, 0, 0);

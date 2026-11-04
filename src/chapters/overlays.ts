@@ -1,3 +1,4 @@
+import * as THREE from 'three/webgpu';
 import { PlanetStage } from '../render/stages/PlanetStage';
 import { BAND_STRIDE } from '../sim/agents/bands';
 import { ANCIENT_CITIES, cityWeight } from '../data/history';
@@ -159,7 +160,7 @@ function ensureModern(stage: PlanetStage): void {
       if (A && B) links.push({ name: a + '-' + b, from: 1988, to: 3000, weight: 0.8, pts: [[A[1], A[2]], [B[1], B[2]]] });
     }
     // the fibre mesh: hair-thin cyan with fast pulses
-    mesh = new ThreadsLayer(links, [0.35, 0.92, 1.0], 1.009, 1.6, 0.0013);
+    mesh = new ThreadsLayer(links, [0.35, 0.92, 1.0], 1.006, 1.6, 0.0021);
     stage.overlay.add(mesh.mesh);
   }
   if (!footprints) {
@@ -239,10 +240,22 @@ PlanetStage.overlays[6] = (stage, f) => {
     f.cue('mote');
     const D = Math.PI / 180;
     const base = [Math.cos(28.6 * D) * Math.sin(-80.6 * D), Math.sin(28.6 * D), Math.cos(28.6 * D) * Math.cos(-80.6 * D)];
-    const up = 1.02 + m * 1.4;
-    stage.bolideU.pos.value.set(base[0]! * up + m * 0.25, base[1]! * up + m * 0.1, base[2]! * up);
-    stage.bolideU.vel.value.set(base[0]! + 0.3, base[1]! + 0.1, base[2]!);
-    stage.bolideU.on.value = Math.sin(Math.PI * Math.min(1, m * 1.1)) * 0.9;
+    // it climbs off the limb into the black (screen up-right), then dwindles toward the Moon:
+    // the path is laid out in camera space so the mote is never lost against the surface
+    const cam = stage.camera;
+    cam.updateMatrixWorld();
+    const R = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+    const U = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
+    const qi = stage.planet.quaternion.clone().invert();
+    const k = Math.pow(Math.min(1, m / 0.42), 0.75);
+    const w = new THREE.Vector3(base[0]!, base[1]!, base[2]!).multiplyScalar(1.02).applyQuaternion(stage.planet.quaternion)
+      .addScaledVector(R, k * 1.05 + Math.max(0, m - 0.42) * 0.5)
+      .addScaledVector(U, k * 1.12 + Math.max(0, m - 0.42) * 0.35);
+    const v = R.clone().multiplyScalar(1.05).addScaledVector(U, 1.12);
+    stage.bolideU.pos.value.copy(w.applyQuaternion(qi));
+    stage.bolideU.vel.value.copy(v.applyQuaternion(qi));
+    stage.bolideU.size.value = 1.35;
+    stage.bolideU.on.value = Math.min(1, m * 12) * (1 - 0.5 * Math.max(0, m - 0.5) * 2);
   }
 };
 
@@ -285,7 +298,7 @@ PlanetStage.overlays[7] = (stage, f) => {
       o.r = v;
       o.g = 0.55 * v;
       o.b = 0.22 * v;
-      o.seed = 0.31;
+      o.seed = 10.31;
       return;
     }
     if (i < DATACENTERS.length) {
@@ -310,7 +323,7 @@ PlanetStage.overlays[7] = (stage, f) => {
       o.r = v;
       o.g = 0.6 * v;
       o.b = 0.28 * v;
-      o.seed = 0.77;
+      o.seed = 10.5;
       return;
     }
     const k = (i - DATACENTERS.length) * SPARK_STRIDE;
