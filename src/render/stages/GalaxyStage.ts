@@ -56,7 +56,11 @@ export class GalaxyStage extends Stage {
     fade: uniform(1),
     /** Coda: seconds into the Coda (−1 before it), per-galaxy saturation flags */
     codaC: uniform(-1),
-    fscale: uniformArray(Array.from({ length: MAXF }, () => new THREE.Vector4(1, 0, 0, 0)), 'vec4'),
+    fscale: uniformArray(Array.from({ length: MAXF }, () => new THREE.Vector4(1, 0, 1, 0)), 'vec4'),
+    /** contested-front fringes: radians per world unit, so a stripe is ~1.4 % of frame height */
+    fringeK: uniform(30),
+    /** how much of a territory's interior is drawn (the Expansion shows mostly its front) */
+    interior: uniform(1),
     satGal: uniformArray(Array.from({ length: 5 }, () => new THREE.Vector4()), 'vec4'),
   };
   private uni!: Universe;
@@ -70,6 +74,12 @@ export class GalaxyStage extends Stage {
   private lastVersion = -1;
   private contested!: Uint8Array;
   private second!: Int8Array;
+  private terrA!: Float32Array;
+  private frontTau = 0.3;
+  private nbArr!: Float32Array;
+  private nbAttr!: THREE.InstancedBufferAttribute;
+  /** the Contest beat on screen: its protagonist, its place, its moment */
+  private beat = { hero: -1, other: -1, node: -1, t: 0, type: '' };
   private evBuf: GEvent[] = [];
   private agNode = new Int32Array(MAX_AGENTS);
   private agOwner = new Int8Array(MAX_AGENTS);
@@ -109,7 +119,11 @@ export class GalaxyStage extends Stage {
     const isMW = g.lessThan(0.5).or(g.greaterThan(2.5).and(g.lessThan(3.5)));
     const r = length(off);
     const along = dot(off, u.sep);
-    const tidal = u.sep.mul(along.mul(u.tidal).mul(sst(4.0, 14.0, r)));
+    // tidal tails: the outer disk is drawn out along the line of approach and swept sideways,
+    // opposite ways on the near and far sides (an S of stars and a bridge between the pair)
+    const tang = normalize(T.cross(u.sep, vec3(0.0, 1.0, 0.0)).add(vec3(0.0001, 0.0, 0.0)));
+    const outer = sst(6.0, 16.0, r);
+    const tidal = u.sep.mul(along.mul(u.tidal).mul(sst(4.0, 14.0, r))).add(tang.mul(along.mul(u.tidal).mul(outer).mul(1.3)));
     // an isotropic direction from two decorrelated hashes of the star's seed
     const th = fract(seed.mul(9187.31)).mul(6.2832);
     const zz = fract(seed.mul(4273.13)).mul(2.0).sub(1.0);
@@ -204,9 +218,11 @@ export class GalaxyStage extends Stage {
           // disk: old stars everywhere, young blue stars crowd the arms
           let r = 0, th = 0, d = 0;
           // Andromeda is an older, redder, dustier disk than ours: fewer young blue stars
-          const young = rng.next() < (g === 3 ? 0.2 : 0.4);
+          const young = rng.next() < (g === 3 ? 0.12 : 0.4);
           for (let tries = 0; tries < 40; tries++) {
-            r = -G.scale * Math.log(1 - rng.next() * 0.996);
+            // surface density ∝ e^(−r/h): radii are Gamma(2)-distributed (a quarter keep a steeper inner profile)
+            const u1 = 1 - rng.next() * 0.996;
+            r = rng.next() < 0.25 ? -G.scale * Math.log(u1) : -G.scale * Math.log(u1 * (1 - rng.next() * 0.996));
             if (r > G.radius * 1.1) continue;
             th = rng.range(0, 6.2832);
             [d] = armDensity(G, r, th);
@@ -383,10 +399,12 @@ export class GalaxyStage extends Stage {
       Bz[i * 4] = Math.min(2.0, Math.max(0.55, (c ? sum / c : 0.3) * 3.5));
     }
     this.stateArr = new Float32Array(n * 4).fill(-1);
+    this.terrA = A;
+    this.nbArr = new Float32Array(n * 4);
     const u = this.u;
     const mesh = makeParticles({
       count: n,
-      attributes: { a: [A, 4], st: [this.stateArr, 4], b: [Bz, 4] },
+      attributes: { a: [A, 4], st: [this.stateArr, 4], b: [Bz, 4], nb: [this.nbArr, 4] },
       renderOrder: 6,
       build: (at) => {
         const p = this.place(at.a.xyz, at.a.w, float(0.37));
@@ -401,8 +419,12 @@ export class GalaxyStage extends Stage {
         // world-space coordinate of each fragment, for patterns that line up across sprites
         const vis = select(has, float(1.0), float(0.0)).mul(this.erased(p)).mul(u.territory).mul(u.fade);
         const vVis = T.varying(vis.mul(flux));
-        // small powers are drawn brighter, so a rival's territory reads against an empire
+        // small powers are drawn brighter, so a rival's territory reads against an empire;
+        // during a Contest beat its protagonist is lifted and everyone else recedes
         const presence = u.fscale.element(oi).x;
+        const frontK = u.fscale.element(oi).z;
+        // fringes stay off the galactic core
+        const offCore = sst(1.6, 3.6, length(at.a.xyz));
         return {
           center: p,
           size: s,
@@ -418,18 +440,27 @@ export class GalaxyStage extends Stage {
               const xz = vec2(wp.x, wp.z).add(vec2(wp.y.mul(0.5), wp.y.mul(-0.3)));
               const k = 7.0;
               const pat = float(0.0).toVar();
-              // each faction's visual language; only its own branch is evaluated
-              T.If(style.lessThan(0.5), () => {
-                // hex lattice: cold, coherent
-                const h1 = xz.mul(k);
+              // lattice lines fade where they would alias; a coarser octave (¼ the frequency) carries
+              // the language into far views, so a whole-galaxy shot still shows hexes or cubes
+              const fw = T.fwidth(xz.x.mul(k)).add(T.fwidth(xz.y.mul(k)));
+              const crisp = sst(0.6, 0.15, fw);
+              const crispF = sst(0.6, 0.15, fw.mul(0.25));
+              const hex = (h1: N): N => {
                 const ha = abs(fract(h1.x).sub(0.5));
                 const hb = abs(fract(h1.x.mul(0.5).add(h1.y.mul(0.866))).sub(0.5));
                 const hc = abs(fract(h1.x.mul(-0.5).add(h1.y.mul(0.866))).sub(0.5));
-                pat.assign(sst(0.06, 0.0, min(ha, min(hb, hc))));
+                return min(ha, min(hb, hc));
+              };
+              const lod = (near: N, far: N): N => mix(mix(float(0.18), far, crispF), near, crisp);
+              // each faction's visual language; only its own branch is evaluated
+              T.If(style.lessThan(0.5), () => {
+                // hex lattice: cold, coherent
+                pat.assign(lod(sst(0.06, 0.0, hex(xz.mul(k))), sst(0.07, 0.0, hex(xz.mul(k * 0.25)))));
               })
                 .ElseIf(style.lessThan(1.5), () => {
                   // cubic lattice
-                  pat.assign(sst(0.06, 0.0, min(abs(fract(xz.x.mul(k)).sub(0.5)), abs(fract(xz.y.mul(k)).sub(0.5)))));
+                  const cub = (c: N): N => min(abs(fract(c.x).sub(0.5)), abs(fract(c.y).sub(0.5)));
+                  pat.assign(lod(sst(0.06, 0.0, cub(xz.mul(k))), sst(0.07, 0.0, cub(xz.mul(k * 0.25)))));
                 })
                 .ElseIf(style.lessThan(2.5), () => {
                   // concentric rings
@@ -441,7 +472,7 @@ export class GalaxyStage extends Stage {
                   const h2 = xz.mul(k * 3.0);
                   const a1 = min(abs(fract(h1.x).sub(0.5)), abs(fract(h1.x.mul(0.5).add(h1.y.mul(0.866))).sub(0.5)));
                   const a2 = min(abs(fract(h2.x).sub(0.5)), abs(fract(h2.x.mul(0.5).add(h2.y.mul(0.866))).sub(0.5)));
-                  pat.assign(sst(0.06, 0.0, a1).add(sst(0.07, 0.0, a2).mul(0.6)));
+                  pat.assign(lod(sst(0.06, 0.0, a1).add(sst(0.07, 0.0, a2).mul(0.6)), sst(0.07, 0.0, hex(xz.mul(k * 0.25)))));
                 })
                 .ElseIf(style.lessThan(4.5), () => {
                   // organic filaments: ridged noise
@@ -466,17 +497,27 @@ export class GalaxyStage extends Stage {
               const w2 = sin(dot(xz, vec2(-13.0, 29.0)).sub(u.time.mul(2.3)));
               const moire = sst(0.3, 1.0, w1.mul(w2).abs()).mul(contested);
               // lattice lines fade where they would alias (far views keep only the tint)
-              const fw = T.fwidth(xz.x.mul(k)).add(T.fwidth(xz.y.mul(k)));
-              const crisp = sst(0.6, 0.15, fw);
-              const pv = mix(float(0.18), pat, crisp);
+              // (lattice styles resolve their own level of detail; the others fade to a flat tint)
+              const latticeStyle = style.lessThan(1.5).or(style.greaterThan(2.5).and(style.lessThan(3.5)));
+              const pv = select(latticeStyle, pat, mix(float(0.18), pat, crisp));
               // the interior keeps a faint lattice; the front draws it in light as it advances
-              const base = pv.mul(0.009).add(0.0007).mul(presence);
-              const front = glow.mul(pv.mul(0.07).add(0.012));
-              // contested fronts: interference fringes alternating between the two powers' colours
-              const w = w1.mul(w2);
-              const fringe = sst(0.2, 0.95, abs(w)).mul(contested);
-              const twoTone = mix(fc.xyz, sc.xyz, T.step(0.0, w));
-              const col = fc.xyz.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.5)))).add(twoTone.mul(fringe.mul(0.07)));
+              const base = pv.mul(0.009).add(0.0007).mul(presence).mul(u.interior);
+              const front = glow.mul(pv.mul(0.07).add(0.012)).mul(frontK);
+              // contested fronts: bands parallel to the border, alternating between the two powers'
+              // colours, at a period fixed in screen terms (never a 1-px moiré)
+              const gc = u.galC.element(at.a.w.toInt()).xyz;
+              const ph = dot(wp.sub(gc), at.nb.xyz).mul(u.fringeK).sub(u.time.mul(1.4));
+              const w = sin(ph);
+              const fringe = sst(0.25, 0.9, abs(w)).mul(contested).mul(offCore).mul(at.nb.w);
+              // both sides of a border share the band orientation: positive bands take the higher-index power
+              const low = at.st.x.lessThan(at.st.w);
+              const hiC = select(low, sc.xyz, fc.xyz), loC = select(low, fc.xyz, sc.xyz);
+              const twoTone = mix(loC, hiC, T.step(0.0, w));
+              // territory fills are drawn more saturated than the faction swatch (pale hues read as grey once summed)
+              const fcol = fc.xyz;
+              const lum = dot(fcol, vec3(0.2126, 0.7152, 0.0722));
+              const fsat = mix(vec3(lum), fcol, 1.8).max(0.0);
+              const col = fsat.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.4)))).add(twoTone.mul(fringe.mul(0.05).mul(frontK.min(1.2))));
               void moire;
               return vec4(col.mul(fall).mul(vVis), 1.0);
             })(),
@@ -484,6 +525,7 @@ export class GalaxyStage extends Stage {
       },
     });
     this.nodeState = (mesh.userData.attrs as Record<string, THREE.InstancedBufferAttribute>).st!;
+    this.nbAttr = (mesh.userData.attrs as Record<string, THREE.InstancedBufferAttribute>).nb!;
     return mesh;
   }
 
@@ -571,7 +613,7 @@ export class GalaxyStage extends Stage {
     const d = Math.hypot(m31[0], m31[1], m31[2]);
     (u.sep.value as THREE.Vector3).set(m31[0], m31[1], m31[2]).normalize();
     const enc = T0 > COLLISION_T - 6e8 && T0 < MERGED_T + 5e8 ? Math.exp(-(((d - 18) / 60) ** 2)) : 0;
-    u.tidal.value = enc * 0.35;
+    u.tidal.value = enc * 0.6;
     u.puff.value = Math.min(1, Math.max(0, (T0 - MERGED_T + 4e8) / 1.5e9));
     // camera basis for world-space patterns
     const cam = this.camera;
@@ -580,6 +622,18 @@ export class GalaxyStage extends Stage {
     (u.camUp.value as THREE.Vector3).setFromMatrixColumn(cam.matrixWorld, 1);
     const p = shot.def.params ?? {};
     u.territory.value = Number(p.territory ?? 1);
+    u.interior.value = Number(p.interior ?? 1);
+    this.frontTau = Number(p.frontTau ?? 0.3);
+    // a fringe period of ~1.4 % of the frame height at the distance the rig is looking
+    const frameH = 2 * Math.tan(h / 2) * Math.max(0.5, this.lookDist);
+    u.fringeK.value = (2 * Math.PI) / (0.014 * frameH);
+    const hero = p.hero !== undefined ? Number(p.hero) : -1;
+    const bt = String(p.beatType ?? '');
+    this.beat.hero = f.chapter === 9 ? hero : -1;
+    this.beat.other = bt === 'extinct' ? -1 : hero === Number(p.beatA ?? -1) ? Number(p.beatB ?? -1) : Number(p.beatA ?? -1);
+    this.beat.node = Number(p.heroNode ?? -1);
+    this.beat.t = Number(p.beatT ?? 0);
+    this.beat.type = bt;
     // the eye adapts: whole galaxies seen from far away are allowed to be bright
     const camD = this.camera.position.length();
     u.starGain.value = Number(p.starGain ?? 1) * (1 + 1.6 * Math.min(1, Math.max(0, (camD - 150) / 700)));
@@ -618,6 +672,23 @@ export class GalaxyStage extends Stage {
       (this.streakMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
       (this.flareMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = 0;
       this.bubble.visible = false;
+      // from far away the victor's island is a soft glow in its colour, not a two-pixel dot
+      if (victor && !p.vacuum) {
+        const fa = this.flares.a!.array as Float32Array, fb = this.flares.b!.array as Float32Array;
+        const camD = this.camera.position.length();
+        const amp = 0.5 * smoothstep01((camD - 500) / 2500) * u.saturate.value;
+        let nf = 0;
+        for (let g = 0; g < 5 && amp > 0; g++) {
+          if ((u.satGal.array[g] as THREE.Vector4).x < 0.5) continue;
+          const gc = galaxyCenter(g, T0, this.tmp);
+          fa.set([gc[0], gc[1], gc[2], Math.max(40, camD * 0.05)], nf * 4);
+          fb.set([victor.r * amp, victor.g * amp, victor.b * amp, 0.0], nf * 4);
+          nf++;
+        }
+        (this.flareMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = nf;
+        this.flares.a!.needsUpdate = true;
+        this.flares.b!.needsUpdate = true;
+      }
     }
   }
 
@@ -641,7 +712,27 @@ export class GalaxyStage extends Stage {
           }
         this.contested[i] = c;
         this.second[i] = s2;
+        // border normal: toward the other power's neighbours, oriented low→high faction index
+        const nb = this.nbArr, A = this.terrA;
+        if (c) {
+          let nx = 0, ny = 0, nz = 0;
+          for (let e = un.nbrStart[i]!; e < un.nbrStart[i + 1]!; e++) {
+            const j = un.nbr[e]!;
+            const oj = host.owner[j]!;
+            if (oj < 0 || oj === o) continue;
+            nx += A[j * 4]! - A[i * 4]!;
+            ny += A[j * 4 + 1]! - A[i * 4 + 1]!;
+            nz += A[j * 4 + 2]! - A[i * 4 + 2]!;
+          }
+          const L = Math.hypot(nx, ny, nz) || 1;
+          const sg = o < s2 ? 1 : -1;
+          nb[i * 4] = (sg * nx) / L;
+          nb[i * 4 + 1] = (sg * ny) / L;
+          nb[i * 4 + 2] = (sg * nz) / L;
+          nb[i * 4 + 3] = 1;
+        } else nb[i * 4 + 3] = 0;
       }
+      this.nbAttr.needsUpdate = true;
       this.lastVersion = host.version;
     }
     // presence: smaller powers brighter (an empire's interior is a whisper; a rival's pocket is legible)
@@ -656,9 +747,24 @@ export class GalaxyStage extends Stage {
       nf++;
     }
     const mean = nf ? tot / nf : 1;
-    for (let k = 0; k < MAXF; k++) (this.u.fscale.array[k] as THREE.Vector4).set(counts[k]! > 0 ? Math.min(3.5, Math.max(0.5, Math.sqrt(mean / counts[k]!))) : 1, 0, 0, 0);
+    const hb = this.beat.hero;
+    for (let k = 0; k < MAXF; k++) {
+      let x = counts[k]! > 0 ? Math.min(3.5, Math.max(0.5, Math.sqrt(mean / counts[k]!))) : 1, z = 1;
+      if (hb >= 0) {
+        if (k === hb) {
+          x = Math.min(6, Math.max(1.5, x * 2.6));
+          z = 2.0;
+        } else if (k === this.beat.other) {
+          x *= 0.8;
+        } else {
+          x *= 0.3;
+          z = 0.3;
+        }
+      }
+      (this.u.fscale.array[k] as THREE.Vector4).set(x, 0, z, 0);
+    }
     // fresh captures glow: the front reads as a luminous shell at any speed
-    const tau = Math.max(2e3, Math.abs(f.speed) * 0.3);
+    const tau = Math.max(2e3, Math.abs(f.speed) * this.frontTau);
     for (let i = 0; i < un.n; i++) {
       const o = host.owner[i]!;
       const age = f.T - host.lastChange[i]!;
@@ -751,6 +857,34 @@ export class GalaxyStage extends Stage {
       fb.set([c[0] * 2.4 * k, c[1] * 2.4 * k, c[2] * 2.4 * k, 0.0], nf * 4);
       nf++;
       (this.flareMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = nf;
+    }
+    // the Contest beat's event, in its protagonist's colour: a spark for an awakening, a collapsing
+    // ring for an extinction, a slow pulse for a war, a treaty, a betrayal
+    const bh = this.beat.hero;
+    if (bh >= 0 && this.beat.node >= 0 && nf < 256 && host.factions[bh]) {
+      const c = host.factions[bh]!.color;
+      nodePos(un, this.beat.node, T0, P0);
+      const D = Math.max(1, Math.hypot(this.camera.position.x - P0[0], this.camera.position.y - P0[1], this.camera.position.z - P0[2]));
+      const fh = 2 * Math.tan((this.camera.fov * Math.PI) / 360) * D;
+      const sec = (T0 - this.beat.t) / Math.max(1e3, Math.abs(f.speed));
+      const ty = this.beat.type;
+      let shell: number, amp: number;
+      if (ty === 'emerge' || ty === 'intrude' || ty === 'reveal') {
+        // ignition: nothing before the moment, then a bright point and an expanding ring
+        amp = sec < 0 ? 0.25 * Math.exp(sec * 2) : 0.55 + 1.1 * Math.exp(-sec * 0.6);
+        shell = sec < 0 ? 0.08 : Math.min(0.9, 0.1 + sec * 0.32);
+      } else if (ty === 'extinct') {
+        // the last pocket closes in on itself, then goes out
+        amp = sec < 0 ? 1.0 : Math.exp(-sec * 1.1);
+        shell = sec < 0 ? Math.min(0.9, 0.12 - sec * 0.3) : 0.1 * Math.exp(-sec);
+      } else {
+        amp = 0.8;
+        shell = 0.15 + ((sec * 0.45) % 1 + 1) % 1 * 0.7;
+      }
+      const g = amp * (f.reducedFlash ? 0.6 : 1);
+      fa.set([P0[0], P0[1], P0[2], fh * 0.16], nf * 4);
+      fb.set([c[0] * 1.3 * g, c[1] * 1.3 * g, c[2] * 1.3 * g, shell], nf * 4);
+      nf++;
     }
     // older vacuum events persist (the bubble only grows)
     if (!vac) for (const e of host.events) if (e.type === 'vacuum' && e.t <= T0) vac = e;

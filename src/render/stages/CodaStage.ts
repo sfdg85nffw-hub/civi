@@ -234,13 +234,16 @@ export class CodaStage extends Stage {
     mat.colorNode = Fn(() => {
       const q = uv().sub(0.5).mul(vec2(u.aspect, 1.0));
       const r = length(q);
-      // the frame opens from the point as a widening circle
-      const mask = sst(u.reveal.mul(1.2), u.reveal.mul(1.2).sub(0.02), r);
+      // the run plays inside the point: an iris that opens from it, stays a porthole in the dark,
+      // and closes back to nothing before the black
+      const R = u.reveal.mul(0.43);
+      const mask = sst(R, R.sub(0.025), r);
       const img = texture(this.montageTex, uv()).rgb;
-      // a soft print look: lifted blacks, warm highlights, vignette
-      const vig = sst(1.0, 0.25, r);
-      const col = img.mul(vec3(1.05, 0.98, 0.92)).mul(vig).mul(u.montage);
-      return vec4(col, mask.mul(u.montage));
+      // a soft print look: warm highlights, the image falling off toward the rim
+      const vig = sst(R.add(0.02), R.mul(0.35), r).mul(0.55).add(0.45);
+      const rim = exp(abs(r.sub(R)).mul(-90.0)).mul(0.5).mul(sst(0.005, 0.03, R));
+      const col = img.mul(vec3(1.05, 0.98, 0.92)).mul(vig).mul(mask).add(vec3(u.victor).mul(rim)).mul(u.montage);
+      return vec4(col, mask.max(rim).mul(u.montage));
     })();
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
     m.position.set(0, 0, -0.1);
@@ -254,7 +257,7 @@ export class CodaStage extends Stage {
     const c = Number(shot.def.params?.c0 ?? 0) + shot.t;
     u.c.value = c;
     u.time.value = f.time;
-    (u.victor.value as THREE.Color).copy(f.spark);
+    (u.victor.value as THREE.Color).copy(f.victor);
     const vac = shot.def.params?.vacuum ? 1 : 0;
     u.vacuum.value = vac;
     // stars: blue → red → black by +10^14 (c ≈ 8.5–11)
@@ -290,7 +293,7 @@ export class CodaStage extends Stage {
     u.point.value = vac ? smoothstep(16.0, 17.0, c) * 0.7 : c < lastDeath - 0.5 ? 0 : smoothstep(lastDeath - 0.5, lastDeath, c) * (1 - 0.6 * smoothstep(lastDeath, lastDeath + 2.5, c));
     // the montage, inside the point
     const m0 = 17.2, m1 = 22.0;
-    u.reveal.value = smoothstep(m0, m0 + 1.2, c);
+    u.reveal.value = smoothstep(m0, m0 + 1.2, c) * (1 - smoothstep(m1 - 1.1, m1 - 0.1, c));
     u.montage.value = c > m0 ? 1 - smoothstep(m1 - 0.15, m1, c) : 0;
     this.montageQuad.visible = c > m0 - 0.1 && c < m1 + 0.1;
     // fit the quad to the frustum

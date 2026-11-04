@@ -1,5 +1,5 @@
 // Capture every signature shot (or a filtered set) through deep links.
-// usage: node scripts/capture-shots.mjs <outDir> [--chapters=0,1] [--res=1280x720] [--all] [--su=0.6] [--warm=12] [--base=http://localhost:5173]
+// usage: node scripts/capture-shots.mjs <outDir> [--chapters=0,1] [--ids=ex-bloom,co-beat] [--res=1280x720] [--all] [--su=0.6] [--warm=12] [--base=http://localhost:5173]
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -22,7 +22,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(`${base}/?backend=webgl&capture=1&res=${res}&chapter=0&warm=1&nocard=1&mute=1&seed=${seed}`);
 await page.waitForFunction(() => window.__deeptime?.ready, null, { timeout: 120000 });
 if (!chapters || chapters.some((c) => c >= 9)) await page.waitForFunction(() => window.__deeptime?.state().galaxyDone, null, { timeout: 300000 });
-const list = (await page.evaluate(() => window.__deeptime.shots())).filter((s) => (args.all ? true : s.signature) && (!chapters || chapters.includes(s.chapter)));
+const list = (await page.evaluate(() => window.__deeptime.shots())).filter((s) => (args.all || args.ids ? true : s.signature) && (!chapters || chapters.includes(s.chapter)) && (!args.ids || args.ids.split(',').some((x) => s.id.startsWith(x))));
 const index = [];
 for (const s of list) {
   const su = s.su ?? args.su ?? '0.6';

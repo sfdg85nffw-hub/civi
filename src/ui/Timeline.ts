@@ -93,15 +93,16 @@ export class Timeline {
     const xm = x0 + L / 2;
     if (b < 1e-4) return [x0 + a * L, y];
     const theta = 2 * Math.PI * b;
-    const r = L / theta;
+    const k = Math.min(1, Math.max(0, (b - 0.3) / 0.7));
+    const e = this.ringTarget ? k * k * (3 - 2 * k) : 0;
+    // as it settles the ring widens, so it frames the first cell from a distance (never a reticle)
+    const r = (L / theta) * (1 + 0.6 * e);
     // arc centred above the bar's midpoint; midpoint stays fixed, ends rise
     const phi = (a - 0.5) * theta; // angle from the bottom
     let cx = xm;
     let cyArc = y - r;
     // as it closes, the ring settles around its target (the first cell)
     if (this.ringTarget) {
-      const k = Math.min(1, Math.max(0, (b - 0.3) / 0.7));
-      const e = k * k * (3 - 2 * k);
       const svgTop = window.innerHeight - (this.s.getBoundingClientRect().height || window.innerHeight * 0.3);
       cx += (this.ringTarget[0] - cx) * e;
       cyArc += (this.ringTarget[1] - svgTop - cyArc) * e;

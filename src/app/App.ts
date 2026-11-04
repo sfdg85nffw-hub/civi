@@ -100,6 +100,8 @@ export class App {
   private pendingSeek: (() => void) | null = null;
   private chronQueue: GEvent[] = [];
   private lastChronPush = -10;
+  private lastBeatId = '';
+  private lastBeatT = -1;
   private stages = new Map<string, Stage>();
   private ui!: HTMLElement;
   private hud!: HUD;
@@ -489,6 +491,24 @@ export class App {
         this.chronQueue = this.chronQueue.filter((e) => keep.includes(e));
       }
     } else if (t1 < t0) this.chronQueue = [];
+    // a Contest beat always carries its own line, dated, as soon as its moment is on screen
+    const bsh = this.lastOut?.a?.shot;
+    const bp = bsh?.def.params;
+    if (bsh && bp && typeof bp.beatText === 'string' && bsh.def.id !== this.lastBeatId) {
+      const bt = Number(bp.beatT ?? 0);
+      if (T >= bt - Math.abs(this.time.speed) * 0.4 || bsh.u > 0.3) {
+        this.lastBeatId = bsh.def.id;
+        this.lastBeatT = bt;
+        // the beat's line replaces whatever lesser lines were waiting
+        this.chronQueue = this.chronQueue.filter((e) => e.t > bt && e.weight >= 0.9 && e.text !== bp.beatText);
+        this.chronicle.push(formatEpoch(bt) + '.', ' ' + bp.beatText, 5.5);
+        this.lastChronPush = this.clock;
+        const actor = Number(bp.hero ?? -1);
+        const fi = actor >= 0 ? this.galaxy.factions[actor] : undefined;
+        if (bp.beatType !== 'vacuum' && fi) this.audio?.motif(fi.motif, 0.9, ((actor * 0.37) % 1) * 1.2 - 0.6);
+      }
+    } else if (bsh && !bp?.beatText) this.lastBeatId = '';
+    this.chronQueue = this.chronQueue.filter((e) => !(e.t === this.lastBeatT && e.text === bp?.beatText));
     // lines that fell behind the picture are dropped: the chronicle always matches the beat on screen
     const stale = Math.max(2e5, Math.abs(this.time.speed) * 1.6);
     this.chronQueue = this.chronQueue.filter((e) => T - e.t < stale);

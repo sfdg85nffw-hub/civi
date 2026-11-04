@@ -26,3 +26,20 @@ fixes by impact. Its report is saved here verbatim; the fixes applied are listed
 - Chronicle: stale lines are dropped so the line on screen matches the beat; at most two lines, more air between them; single line with a dark text scrim.
 - Coda: accretion rings and the last point kept below white-out so they stay the winner's colour (point gets a wide halo); the spark's halo carries its colour; candles larger/brighter so they visibly redden and go out; the timeline ring settles centred on the first cell.
 - Streaks (kill vehicles, probes, fleets, beams) never thinner than ~2.6 px; Andromeda's disk older and redder than ours; Local Group framing puts the Milky Way in the lower third with Andromeda above.
+| B | Chapters 0–7 (24 frames) | [passB-ch0-7.md](passB-ch0-7.md) |
+
+### Fixes applied after pass B (chapters 0–7)
+- Prologue: organ-pipe chimneys with knobs and flanges (no "hand"), a hotter ember core, a darker plume.
+- Hominins: feathered ranges and a blurred dispersal field (no rectangles or blocks); denser, wider hand stencils on a calmer wall; firelight from inside an irregular hearth.
+- Night sides: smooth sodium city clusters (no mosaic); globe sprites lifted clear of the surface (no cut halo on the last light); Chapter 5 planet restored at normal exposure with the Empires horizon in the upper third.
+- Layout: close snowball limb, centred front-lit drift, GOE mid-transition, brighter Apollo mote at dusk, swarm caught mid-dismantling; Volvox colonies without needles; seafloor depth fog.
+| B | Chapters 8–10 (15 frames) | [passB-ch8-10.md](passB-ch8-10.md) |
+
+### Fixes applied after pass B (chapters 8–10)
+- Coda: the holes and the last point were reading the (still white) spark instead of the victor — they now take the victor's colour.
+- Contest: each beat names its protagonist; its territory is lifted (×2.6) and every other power recedes (×0.3), and the event itself is drawn in that colour (an igniting spark and expanding ring for an awakening, a collapsing ring for an extinction, a slow pulse for wars, treaties and betrayals). Every beat carries its own dated chronicle line, over a soft scrim.
+- Fronts: interference bands run parallel to the border, at a period fixed at ~1.4 % of frame height, both sides sharing the band orientation, and never over a galactic core. Territory fills are drawn more saturated than the faction swatch.
+- Galaxies: disk stars follow an exponential surface density (Gamma(2) radii), so the outer disk is populated and the Sun sits at half radius of the visible disk; cores are less dominant.
+- Framing: whole-galaxy beats are composed around the event (core off-centre); the collision is closer, with tidal tails and a bridge; Andromeda older and redder; *Neighbours* is a telephoto over our disk with Andromeda in the upper third.
+- Return: the spark keeps its hue (less white core, coloured halo); the settled timeline ring widens to frame the first cell from a distance.
+

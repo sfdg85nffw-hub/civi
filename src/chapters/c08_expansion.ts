@@ -42,6 +42,26 @@ export function shoulderRig(o: { T: number; back: number; backTo?: number; up: n
   };
 }
 
+/**
+ * Telephoto over the Milky Way toward Andromeda: our disk recedes as a grazing
+ * field of stars across the lower frame, the neighbour hangs above it.
+ */
+export function neighboursRig(o: { T: number; back: number; backTo: number; up: number; upTo: number; lift: number; fov: number; fovTo: number }): Rig {
+  return (u) => {
+    const e = easeInOutSine(Math.min(1, Math.max(0, u)));
+    const c = galaxyCenter(3, o.T);
+    const d = new THREE.Vector3(c[0], c[1], c[2]);
+    const L = d.length();
+    d.normalize();
+    const pos = d.clone().multiplyScalar(-lerp(o.back, o.backTo, e)).add(new THREE.Vector3(0, lerp(o.up, o.upTo, e), 0));
+    const toM31 = new THREE.Vector3(c[0], c[1], c[2]).sub(pos);
+    // aim below Andromeda so it sits in the upper third
+    const target = new THREE.Vector3(c[0], c[1], c[2]).add(new THREE.Vector3(0, -Math.tan(o.lift) * toM31.length(), 0));
+    void L;
+    return { pos, target, fov: lerp(o.fov, o.fovTo, e) };
+  };
+}
+
 const m31 = galaxyCenter(3, 3e7);
 const mid: [number, number, number] = [m31[0] * 0.5, m31[1] * 0.5, m31[2] * 0.5];
 /** a direction perpendicular to the Milky Way–Andromeda line, raised a little */
@@ -70,12 +90,12 @@ export const expansion: ChapterDef = {
       id: 'ex-bloom', stage: 'galaxy', dur: 7, label: 'Bloom', signature: true,
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ center: [-2, 0, 1.5], radius: 44, radiusTo: 36, elev: 1.02, elevTo: 0.9, az: 0.35, azTo: 0.62, fov: 34, ease: easeInOutSine }),
-      params: { su: 0.45 },
+      params: { su: 0.45, interior: 0.3, frontTau: 0.12 },
     },
     {
       id: 'ex-neighbours', stage: 'galaxy', dur: 8, label: 'Neighbours', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: shoulderRig({ T: 1e7, back: 30, backTo: 62, up: 26, upTo: 44, side: 8, sideTo: 24, look: 0.06, fov: 40, fovTo: 48 }),
+      rig: neighboursRig({ T: 1e7, back: 30, backTo: 42, up: 5, upTo: 7.5, lift: 0.1, fov: 27, fovTo: 23 }),
       params: { su: 0.8 },
     },
     {

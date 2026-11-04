@@ -29,7 +29,7 @@ Phase 7 — reviewer passes (A done for all chapters; B in progress), polish
 - CI: build + unit + 50-seed balance + e2e jobs pass; the deploy job waits only for GitHub Pages to be switched on in the repository settings.
 
 ## Next action
-1. Review pass B (captures/passB, captures/passB_g) → fixes → pass C → fixes.
+1. Pass B fixes applied (ch0–7 committed; ch8–10 in progress: hero colour per Contest beat, beat flares and chronicle lines, border-aligned fringes, Gamma(2) star disks, Expansion shell + coarse lattice, telephoto Neighbours, collision tails, Coda victor colour, montage iris, island glow, Return spark/ring). Pass C: ch0–7 captured (captures/passC) and under review; capture ch8–10 into captures/passC_g (640x360, quality low) after the ch8–10 fixes, review, final fixes.
 2. Final full pacing run on the final build; README captures (docs/media); DoD verification; final summary.
 
 ## Known issues

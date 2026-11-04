@@ -24,6 +24,9 @@ export abstract class Stage {
   /** Per-frame update while visible. */
   abstract update(f: FrameContext, shot: ShotRuntime): void;
 
+  /** distance from the camera to what the rig is looking at (for screen-scaled patterns) */
+  lookDist = 30;
+
   ensureBuilt(): void {
     if (!this.built) {
       this.build();
@@ -36,6 +39,7 @@ export abstract class Stage {
     c.position.copy(p.pos);
     c.up.set(0, 1, 0);
     c.lookAt(p.target);
+    this.lookDist = p.pos.distanceTo(p.target);
     if (p.roll) c.rotateZ(p.roll);
     if (c.fov !== p.fov || c.aspect !== aspect || c.near !== this.projNear || c.far !== this.projFar) {
       c.fov = p.fov;

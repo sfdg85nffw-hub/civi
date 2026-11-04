@@ -53,8 +53,11 @@ button:focus-visible { outline: 1px solid var(--ink-dim); outline-offset: 4px; }
 
 /* ---------- chronicle ---------- */
 .chronicle { position: fixed; left: 5vw; bottom: 9.5vh; max-width: min(92ch, 86vw); pointer-events: none; }
-.chronicle .entry { font-weight: 200; font-size: clamp(11px, 1.3vmin, 14px); letter-spacing: 0.08em; line-height: 1.7; color: var(--ink); white-space: nowrap; text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.8); opacity: 0; transition: opacity 1.4s var(--ease), transform 1.4s var(--ease); transform: translateY(6px); }
+.chronicle .entry { font-weight: 300; font-size: clamp(11px, 1.3vmin, 14px); letter-spacing: 0.08em; line-height: 1.7; color: var(--ink); white-space: nowrap; text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.8); opacity: 0; transition: opacity 1.4s var(--ease), transform 1.4s var(--ease); transform: translateY(6px); }
 .chronicle .entry.on { opacity: 0.86; transform: none; }
+/* a soft scrim behind the lines, so bright fields never compete with the type */
+.chronicle::before { content: ''; position: absolute; left: -5vw; right: -8vw; top: -2.4em; bottom: -2.4em; background: radial-gradient(ellipse 60% 70% at 32% 55%, rgba(0,0,0,0.62), rgba(0,0,0,0.3) 55%, rgba(0,0,0,0) 78%); z-index: -1; opacity: 0; transition: opacity 1.4s var(--ease); }
+.chronicle:has(.entry.on)::before { opacity: 1; }
 .chronicle .entry .when { color: var(--ink-dim); margin-right: 0.9em; letter-spacing: 0.14em; }
 
 /* ---------- HUD ---------- */

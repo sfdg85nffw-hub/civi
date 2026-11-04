@@ -115,16 +115,24 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     const az = rng.range(0, Math.PI * 2);
     let rig;
     if (style === 'collision') {
-      rig = orbit({ center, radius: 150, radiusTo: 110, elev: 0.5, elevTo: 0.42, az, azTo: az + 0.25, fov: 38, ease: easeInOutSine });
+      rig = orbit({ center, radius: 92, radiusTo: 74, elev: 0.5, elevTo: 0.42, az, azTo: az + 0.25, fov: 38, ease: easeInOutSine });
     } else if (style === 'galactic') {
       const R = g === 0 || (b.t0 > MERGED_T && g === 3) ? 46 : g === 3 ? 58 : 28;
-      rig = orbit({ center: [gc[0], gc[1], gc[2]], radius: R * 1.08, radiusTo: R, elev: 1.0, elevTo: 0.9, az, azTo: az + 0.2, fov: 34, ease: easeInOutSine });
+      // the whole galaxy, but composed around the beat: the event sits a third of the way in, the core off-centre
+      const tc: [number, number, number] = [gc[0] + (center[0] - gc[0]) * 0.65, gc[1] + (center[1] - gc[1]) * 0.65, gc[2] + (center[2] - gc[2]) * 0.65];
+      rig = orbit({ center: tc, radius: R * 1.0, radiusTo: R * 0.9, elev: 1.0, elevTo: 0.9, az, azTo: az + 0.2, fov: 34, ease: easeInOutSine });
     } else if (style === 'grazing') {
       rig = orbit({ center, radius: 36, radiusTo: 30, elev: 0.2, elevTo: 0.26, az, azTo: az + 0.3, fov: 34, ease: easeInOutSine });
     } else {
       rig = orbit({ center, radius: 34, radiusTo: 28, elev: 0.85, elevTo: 0.72, az, azTo: az + 0.35, fov: 36, ease: easeInOutSine });
     }
-    shots.push({ id: `co-beat${i}-${e.type}`, stage: 'galaxy', dur: d, label: e.text, signature: b.w >= 0.85, transition: { type: 'dissolve', dur: Math.min(1.2, d * 0.3) }, rig, params: { su: 0.55, territory: 2.6 } });
+    // the beat's protagonist: its colour is the brightest thing on screen while the beat lasts
+    const hero = e.type === 'extinct' ? e.b : e.a >= 0 ? e.a : e.b;
+    shots.push({
+      id: `co-beat${i}-${e.type}`, stage: 'galaxy', dur: d, label: e.text, signature: b.w >= 0.85,
+      transition: { type: 'dissolve', dur: Math.min(1.2, d * 0.3) }, rig,
+      params: { su: 0.55, territory: 2.6, hero, heroNode: e.node, beatT: e.t, beatText: e.text, beatType: e.type, beatA: e.a, beatB: e.b },
+    });
   });
   // the end: the holder of what is left
   const lastBeat = chosen[chosen.length - 1];
