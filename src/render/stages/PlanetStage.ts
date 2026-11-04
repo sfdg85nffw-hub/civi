@@ -639,7 +639,7 @@ export class PlanetStage extends Stage {
   }
 
   /** Overlay API: write the emissive layer from a field (w×h cells, row 0 = north). */
-  setEmissive(version: number, w: number, h: number, sample: (x: number, y: number) => [number, number, number]): void {
+  setEmissive(version: number, w: number, h: number, sample: (x: number, y: number) => [number, number, number], blur = 0): void {
     if (version === this.lightsVersion) return;
     this.lightsVersion = version;
     const d = this.lightsData;
@@ -658,8 +658,49 @@ export class PlanetStage extends Stage {
         d[i + 2] = Math.min(255, c[2] * 255);
         d[i + 3] = 255;
       }
+    if (blur > 0) this.blurLights(blur);
     this.lightsTex.needsUpdate = true;
     this.lightsCleared = false;
+  }
+
+  /** separable box blur (two passes) on the 360×180 emissive grid, wrapping in longitude */
+  private blurLights(r: number): void {
+    const d = this.lightsData;
+    const W = 360, H = 180;
+    const tmp = new Float32Array(W * H * 3);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let y = 0; y < H; y++)
+        for (let x = 0; x < W; x++) {
+          let a = 0, b = 0, c = 0;
+          for (let k = -r; k <= r; k++) {
+            const i = (y * W + ((x + k + W) % W)) * 4;
+            a += d[i]!;
+            b += d[i + 1]!;
+            c += d[i + 2]!;
+          }
+          const o = (y * W + x) * 3, n = 2 * r + 1;
+          tmp[o] = a / n;
+          tmp[o + 1] = b / n;
+          tmp[o + 2] = c / n;
+        }
+      for (let y = 0; y < H; y++)
+        for (let x = 0; x < W; x++) {
+          let a = 0, b = 0, c = 0, n = 0;
+          for (let k = -r; k <= r; k++) {
+            const yy = y + k;
+            if (yy < 0 || yy >= H) continue;
+            const o = (yy * W + x) * 3;
+            a += tmp[o]!;
+            b += tmp[o + 1]!;
+            c += tmp[o + 2]!;
+            n++;
+          }
+          const i = (y * W + x) * 4;
+          d[i] = a / n;
+          d[i + 1] = b / n;
+          d[i + 2] = c / n;
+        }
+    }
   }
 
   clearOverlays(): void {

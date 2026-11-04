@@ -29,7 +29,7 @@ PlanetStage.overlays[4] = (stage, f) => {
       const i = (y * field.w + x) * 4;
       const s = d[i]!, n = d[i + 1]!, e = d[i + 2]!;
       return [(s * 1.6 + n * 1.2 + e * 0.9) * fieldGain, (s * 0.7 + n * 0.62 + e * 0.38) * fieldGain, (s * 0.18 + n * 0.25 + e * 0.12) * fieldGain];
-    });
+    }, 2);
   }
   const snap = ag.snap;
   const a = ag.alpha;

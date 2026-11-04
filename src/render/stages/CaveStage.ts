@@ -95,8 +95,8 @@ export class CaveStage extends Stage {
     // a wide, soft spray cloud: densest at the hand's edge, thinning over several centimetres
     const spray = T.exp(d.max(0.0).mul(-38.0)).mul(sst(-0.001, 0.003, d));
     const blot = vnoise(vec3(q.mul(14.0), float(i).add(3.0)), 'b').mul(0.35).add(0.75);
-    const halo = spray.mul(blot).mul(sst(0.11, 0.06, d));
-    return halo.mul(speck.mul(0.6).add(0.55));
+    const halo = spray.mul(blot).mul(sst(0.11, 0.06, d)).mul(1.7).min(1.0);
+    return halo.mul(speck.mul(0.5).add(0.62));
   }
 
   private wall(): THREE.Mesh {
@@ -110,7 +110,7 @@ export class CaveStage extends Stage {
     mat.colorNode = Fn(() => {
     const rock = mix(vec3(0.33, 0.27, 0.2), vec3(0.45, 0.38, 0.29), vnoise(w.mul(2.0), 'g').mul(0.5).add(0.5));
     const stains = vfbm(w.mul(1.2));
-    let alb: N = mix(rock, vec3(0.2, 0.17, 0.13), sst(0.0, 0.5, stains).mul(0.5));
+    let alb: N = mix(rock, vec3(0.24, 0.2, 0.15), sst(0.0, 0.5, stains).mul(0.28));
     // flowstone streaks
     alb = mix(alb, vec3(0.5, 0.45, 0.38), sst(0.62, 0.92, vnoise(vec3(w.x.mul(7.0), w.y.mul(2.2), w.x.mul(1.3)), 'b').mul(0.5).add(0.5)).mul(0.12));
     // the hands, appearing one by one

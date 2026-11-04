@@ -8,7 +8,7 @@ import { POLITY_FATE } from '../sim/agents/polities';
 const empires: ShotDef = {
   id: 'an-empires', stage: 'planet', dur: 9, label: 'Empires breathe', signature: true,
   transition: { type: 'blend', dur: 2.0 },
-  rig: push({ from: [0.12, -0.42, 1.62], to: [0.02, -0.36, 1.5], target: [0.0, 0.5, 0.88], targetTo: [0.0, 0.52, 0.86], fov: 40, fovTo: 38, ease: easeInOutSine, roll: 0.06, rollTo: 0.03 }),
+  rig: push({ from: [0.12, -0.42, 1.62], to: [0.02, -0.36, 1.5], target: [0.0, 0.22, 0.95], targetTo: [0.0, 0.24, 0.94], fov: 40, fovTo: 38, ease: easeInOutSine, roll: 0.06, rollTo: 0.03 }),
   params: { moonlight: 0.075, lat: 39, lon: 20, spin: 8, sunAz: -152, sunEl: 12, stars: 0.16, su: 0.7 },
 };
 
