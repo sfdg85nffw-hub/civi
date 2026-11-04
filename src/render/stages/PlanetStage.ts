@@ -715,6 +715,8 @@ export class PlanetStage extends Stage {
     (u.sun.value as THREE.Vector3).set(Math.sin(sa) * Math.cos(se), Math.sin(se), Math.cos(sa) * Math.cos(se)).normalize();
     (u.sunLocal.value as THREE.Vector3).copy(u.sun.value as THREE.Vector3).applyQuaternion(q.clone().invert());
     u.stars.value = Number(p.stars ?? 0.18);
+    // moonlight on the night side (per shot): enough to keep the continents legible under the lights
+    u.moonlight.value = Number(p.moonlight ?? 0.06);
     u.time.value = f.time;
     u.cloudT.value = f.time * 1.0 + (f.T > -1e6 ? 0 : 0);
     // fate-driven appearance

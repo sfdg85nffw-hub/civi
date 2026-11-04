@@ -35,8 +35,9 @@ for (;;) {
     next = Math.floor(st.s / every) * every + every;
   }
   if (st.phase === 'rest' || st.s >= st.total - 0.01 || (args.s1 && st.s >= Number(args.s1))) break;
-  await page.evaluate(() => window.__deeptime.run(4));
-  await page.evaluate(() => window.__deeptime.frames(4));
+  const step = Math.max(1, Math.round((fps * every) / 2));
+  await page.evaluate((n) => window.__deeptime.run(n), step);
+  await page.evaluate((n) => window.__deeptime.frames(n), step);
 }
 fs.writeFileSync(path.join(out, 'index.json'), JSON.stringify({ errors: [...new Set(errors)], index }, null, 2));
 console.log('done; errors:', [...new Set(errors)].slice(0, 20));

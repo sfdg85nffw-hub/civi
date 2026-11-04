@@ -542,7 +542,7 @@ export class App {
     this.lastNow = now;
     if (this.link.capture) dt = this.ready && this.runFrames <= 0 ? 0 : 1 / this.link.fps;
     if (this.runFrames > 0) this.runFrames--;
-    dt = clamp(dt, 0, 0.1);
+    dt = clamp(dt, 0, this.link.capture ? 1.0 : 0.1);
     this.frameNo++;
     if (!this.link.capture) this.renderer.trackFrame(dt * 1000);
 
