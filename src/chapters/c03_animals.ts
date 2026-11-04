@@ -34,8 +34,8 @@ export const animals: ChapterDef = {
     {
       id: 'a-drift', stage: 'planet', dur: 5, label: 'Drift', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: orbit({ radius: 4.4, radiusTo: 4.2, elev: 0.12, az: 0.2, azTo: -0.1, fov: 34, ease: easeInOutSine, targetOffset: [-0.45, 0, 0] }),
-      params: { lat: 0, lon: -10, spin: 40, sunAz: 64, sunEl: 30, stars: 0.12, su: 0.6 },
+      rig: orbit({ radius: 4.9, radiusTo: 4.6, elev: 0.18, az: 0.15, azTo: -0.1, fov: 32, ease: easeInOutSine, targetOffset: [0, 0, 0] }),
+      params: { lat: 0, lon: -10, spin: 40, sunAz: 38, sunEl: 22, stars: 0.12, su: 0.6 },
     },
     {
       id: 'a-chicxulub', stage: 'planet', dur: 6, label: 'Chicxulub', signature: true,

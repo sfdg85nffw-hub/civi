@@ -44,7 +44,7 @@ export const singularity: ChapterDef = {
       id: 'si-swarm', stage: 'solar', dur: 6.5, label: 'The swarm', signature: true,
       transition: { type: 'fade', dur: 1.0 },
       rig: push({ from: [1.5, 0.08, 0.75], to: [0.0, 3.0, 3.8], target: [1.0, 0.0, 0.3], targetTo: [0, 0, 0], fov: 36, fovTo: 32, ease: easeInOutSine }),
-      params: { su: 0.6 },
+      params: { su: 0.36 },
     },
   ],
 };

@@ -42,7 +42,7 @@ export class FireStage extends Stage {
     this.scene.background = new THREE.Color(0, 0, 0);
     this.scene.fogNode = fog(vec3(0.0, 0.0, 0.0), densityFogFactor(float(0.06)));
     this.light = new THREE.PointLight(0xff7a30, 0, 9, 2);
-    this.light.position.set(0, 0.35, 0);
+    this.light.position.set(0, 0.14, 0);
     this.scene.add(this.light);
     this.scene.add(this.sky());
     this.scene.add(this.ground());
