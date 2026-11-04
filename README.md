@@ -9,7 +9,7 @@ Local Group — the universe ends, and the first frame returns.
 
 Press **Begin** once. Everything after that is automatic.
 
-**Live:** https://sfdg85nffw-hub.github.io/civi/ (see *Deploy* for the one-time Pages switch)
+**Live:** https://sfdg85nffw-hub.github.io/civi/ (deployed by GitHub Actions on every push to `main`)
 
 <!-- captures: docs/media/*.jpg are rendered by scripts/capture-shots.mjs -->
 
