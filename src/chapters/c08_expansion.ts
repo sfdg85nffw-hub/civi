@@ -75,13 +75,13 @@ export const expansion: ChapterDef = {
     {
       id: 'ex-neighbours', stage: 'galaxy', dur: 8, label: 'Neighbours', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: shoulderRig({ T: 1e7, back: 30, backTo: 62, up: 26, upTo: 44, side: 8, sideTo: 24, look: 0.16, fov: 40, fovTo: 48 }),
+      rig: shoulderRig({ T: 1e7, back: 30, backTo: 62, up: 26, upTo: 44, side: 8, sideTo: 24, look: 0.06, fov: 40, fovTo: 48 }),
       params: { su: 0.8 },
     },
     {
       id: 'ex-quiet', stage: 'galaxy', dur: 4, label: 'Quiet',
       transition: { type: 'dissolve', dur: 1.0 },
-      rig: shoulderRig({ T: 5e8, back: 64, backTo: 70, up: 44, upTo: 46, side: 25, sideTo: 30, look: 0.17, fov: 48 }),
+      rig: shoulderRig({ T: 5e8, back: 64, backTo: 70, up: 44, upTo: 46, side: 25, sideTo: 30, look: 0.065, fov: 48 }),
       params: { su: 0.5 },
     },
   ],

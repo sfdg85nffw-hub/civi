@@ -94,7 +94,7 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     transition: { type: 'fade', dur: 1.0 },
     rig: firstGal === 0 || firstGal === 1 || firstGal === 2
       ? orbit({ center: [0, 0, 0], radius: 52, radiusTo: 46, elev: 1.0, elevTo: 0.95, az: 0.2, azTo: 0.32, fov: 34, ease: easeInOutSine })
-      : shoulderRig({ T: first ? first.t0 : 1.2e9, back: 70, backTo: 62, up: 46, upTo: 40, side: 28, sideTo: 22, look: 0.22, fov: 48, fovTo: 44 }),
+      : shoulderRig({ T: first ? first.t0 : 1.2e9, back: 70, backTo: 62, up: 46, upTo: 40, side: 28, sideTo: 22, look: 0.07, fov: 48, fovTo: 44 }),
     params: { su: 0.6, territory: 2.2 },
   });
   const styles = ['regional', 'galactic', 'grazing', 'regional', 'galactic'];
@@ -134,7 +134,7 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     transition: { type: 'dissolve', dur: 1.4 },
     rig: merged
       ? orbit({ center: [0, 0, 0], radius: 95, radiusTo: 80, elev: 0.75, elevTo: 0.7, az: 0.4, azTo: 0.6, fov: 36, ease: easeInOutSine })
-      : shoulderRig({ T: end, back: 36, backTo: 70, up: 30, upTo: 46, side: 10, sideTo: 26, look: 0.18, fov: 40, fovTo: 48 }),
+      : shoulderRig({ T: end, back: 36, backTo: 70, up: 30, upTo: 46, side: 10, sideTo: 26, look: 0.06, fov: 40, fovTo: 48 }),
     params: { su: 0.7, territory: 2.2 },
   });
   void lastBeat;
