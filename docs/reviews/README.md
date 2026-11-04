@@ -19,3 +19,10 @@ fixes by impact. Its report is saved here verbatim; the fixes applied are listed
 - Cameras: six identical north-up globe framings replaced (small disc with negative space, horizon-arc limb shots, a regional close-up, an oblique pass); consistent sun side per chapter (right in 1–3, left in 4–7).
 - Beats: Volvox colonies in *Colonies*; Apollo mote as a hard white point at dusk over the slow 1969 beat; plague front paced at ~9°/yr with red front and ash wake on the threads; last light 15–30 px warm halo and softened lattice around it; *Pattern* reframed over populated land.
 - Stages: seafloor rippled sand with stronger gold caustics; hand stencils as wide sprayed clouds, raking firelight, subtler flowstone; irregular hearth; glacial blue-white ice; microscope shots with shallow depth of field; era-specific line languages (gold silk, silver wakes, cyan fibre).
+| A | Chapters 8–10 (15 frames) | [passA-ch8-10.md](passA-ch8-10.md) |
+
+### Fixes applied after pass A (chapters 8–10)
+- Contest legibility: territory interiors are a whisper weighted by "presence" (small powers brighter), contested fronts are two-colour interference fringes in both powers' colours; galaxy bloom radius/threshold cut, bulges dimmer, cameras pulled back.
+- Chronicle: stale lines are dropped so the line on screen matches the beat; at most two lines, more air between them; single line with a dark text scrim.
+- Coda: accretion rings and the last point kept below white-out so they stay the winner's colour (point gets a wide halo); the spark's halo carries its colour; candles larger/brighter so they visibly redden and go out; the timeline ring settles centred on the first cell.
+- Streaks (kill vehicles, probes, fleets, beams) never thinner than ~2.6 px; Andromeda's disk older and redder than ours; Local Group framing puts the Milky Way in the lower third with Andromeda above.
