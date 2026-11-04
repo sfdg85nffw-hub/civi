@@ -178,7 +178,7 @@ export class CodaStage extends Stage {
               const src = screenUV.sub(d.div(dr).mul(bend.mul(R)).div(vec2(u.aspect, 1.0)));
               const bg = viewportSharedTexture(src).rgb;
               const ring = exp(abs(x.sub(rs.mul(1.5))).mul(-90.0)).mul(life);
-              const disk = vec3(u.victor).mul(ring.mul(2.2));
+              const disk = vec3(u.victor).mul(ring.mul(0.95));
               const horizon = sst(rs.mul(1.02), rs.mul(0.98), x);
               const edge = sst(1.0, 0.75, r);
               const col = mix(bg.add(disk), vec3(0.0), horizon);
@@ -220,9 +220,10 @@ export class CodaStage extends Stage {
       renderOrder: 9,
       build: (at) => ({
         center: at.a.xyz,
-        size: float(0.05).add(u.point.mul(0.0)),
-        color: vec3(u.victor).mul(u.point).mul(2.5),
-        shape: (q: N) => exp(length(q).mul(-7.0)),
+        size: float(0.16),
+        // a small hot core and a wide halo in the winner's colour (it rhymes with the last human light)
+        color: vec3(u.victor).mul(u.point).mul(0.9),
+        shape: (q: N) => exp(length(q).mul(-26.0)).mul(1.6).add(exp(length(q).mul(-5.0)).mul(0.22)),
       }),
     });
   }

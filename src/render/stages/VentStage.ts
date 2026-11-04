@@ -488,7 +488,7 @@ export class VentStage extends Stage {
         attributes: { a: [one, 4] },
         renderOrder: 14,
         softness: 3.0,
-        build: (at) => ({ center: at.a.xyz, size: float(0.1), color: vec3(sc).mul(I.mul(0.0035)) }),
+        build: (at) => ({ center: at.a.xyz, size: float(0.12), color: vec3(sc).mul(I.mul(0.008)) }),
       }),
     );
     g.add(
@@ -499,7 +499,7 @@ export class VentStage extends Stage {
         softness: 8.0,
         build: (at) => {
           const flick = float(1.0).add(sin(t.mul(31.0)).mul(0.06)).add(sin(t.mul(17.0)).mul(0.07));
-          return { center: at.a.xyz, size: float(0.0032), color: vec3(sc).mul(I.mul(flick).mul(0.8)).add(vec3(I.mul(0.08))) };
+          return { center: at.a.xyz, size: float(0.0032), color: vec3(sc).mul(I.mul(flick).mul(0.55)).add(vec3(I.mul(0.025))) };
         },
       }),
     );

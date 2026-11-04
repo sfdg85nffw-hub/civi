@@ -64,13 +64,13 @@ export const expansion: ChapterDef = {
       id: 'ex-disk', stage: 'galaxy', dur: 6, label: 'Ring to disk', signature: true,
       transition: { type: 'match', dur: 1.4 },
       rig: push({ from: [0, 23.4, 29.9], to: [-3.6, 10.5, 16.5], target: [0, 0, 0], targetTo: [SUN_POS[0], 0, SUN_POS[2]], fov: 32, fovTo: 34, ease: easeInOutSine }),
-      params: { su: 0.75, territory: 1 },
+      params: { su: 0.12, territory: 1 },
     },
     {
       id: 'ex-bloom', stage: 'galaxy', dur: 7, label: 'Bloom', signature: true,
       transition: { type: 'dissolve', dur: 1.2 },
       rig: orbit({ center: [-2, 0, 1.5], radius: 44, radiusTo: 36, elev: 1.02, elevTo: 0.9, az: 0.35, azTo: 0.62, fov: 34, ease: easeInOutSine }),
-      params: { su: 0.7 },
+      params: { su: 0.45 },
     },
     {
       id: 'ex-neighbours', stage: 'galaxy', dur: 8, label: 'Neighbours', signature: true,

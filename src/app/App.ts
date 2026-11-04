@@ -7,7 +7,7 @@ import { FreeCamera } from '../director/FreeCamera';
 import { CHAPTERS, chapterById, TAKEOVER_T } from '../chapters/meta';
 import { CHAPTER_DEFS, STAGE_FACTORIES } from '../chapters/registry';
 import type { Stage } from '../render/stages/Stage';
-import { preloadVentGeometry } from '../render/stages/VentStage';
+import { preloadVentGeometry, PROTOCELL } from '../render/stages/VentStage';
 import { PlanetStage, preloadPlanetAssets } from '../render/stages/PlanetStage';
 import type { FrameContext } from './frame';
 import { worldAt } from '../fate/world';
@@ -395,6 +395,7 @@ export class App {
       if (this.audioOverride.music !== undefined || this.audioOverride.chord !== undefined || this.audioOverride.toneDb !== undefined) this.audioOverride = {};
       this.stageFade = 1;
       this.sparkSaved = false;
+      this.timeline.ringTarget = null;
       return -1;
     }
     const c = s - this.time.odyssey.span(10).s0;
@@ -439,6 +440,12 @@ export class App {
     }
     // the ring: the bar fades in and curls until its end meets its beginning
     this.timeline.curl = smoothstep(CODA.ring, CODA.end - 0.2, c);
+    // the ring closes around the first cell
+    const vent = this.stages.get('vent');
+    if (vent && c >= CODA.ret) {
+      const v = new THREE.Vector3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z).project(vent.camera);
+      this.timeline.ringTarget = [(v.x * 0.5 + 0.5) * window.innerWidth, (0.5 - v.y * 0.5) * window.innerHeight];
+    } else this.timeline.ringTarget = null;
     if (c >= CODA.end - 0.05 && this.phase === 'running' && this.time.mode === 'odyssey') {
       this.phase = 'rest';
       this.time.resting = true;
@@ -482,6 +489,9 @@ export class App {
         this.chronQueue = this.chronQueue.filter((e) => keep.includes(e));
       }
     } else if (t1 < t0) this.chronQueue = [];
+    // lines that fell behind the picture are dropped: the chronicle always matches the beat on screen
+    const stale = Math.max(2e5, Math.abs(this.time.speed) * 1.6);
+    this.chronQueue = this.chronQueue.filter((e) => T - e.t < stale);
     if (this.chronQueue.length && this.clock - this.lastChronPush > 2.4) {
       const e = this.chronQueue.shift()!;
       this.chronicle.push(formatEpoch(e.t) + '.', ' ' + e.text, 5.5);

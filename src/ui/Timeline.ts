@@ -22,6 +22,8 @@ export class Timeline {
   private N = 240;
   /** 0 = straight bar, 1 = closed ring */
   curl = 0;
+  /** screen position (px) the closed ring should centre on, or null */
+  ringTarget: [number, number] | null = null;
   /** 0..1 overall opacity */
   opacity = 0;
   private spans: { s0: number; s1: number; title: string }[] = [];
@@ -94,11 +96,17 @@ export class Timeline {
     const r = L / theta;
     // arc centred above the bar's midpoint; midpoint stays fixed, ends rise
     const phi = (a - 0.5) * theta; // angle from the bottom
-    const cx = xm;
-    const cyArc = y - r;
-    // drift the closed ring upward toward frame centre as it forms
-    const lift = b * b * (window.innerHeight * 0.3 * 0.0);
-    return [cx + r * Math.sin(phi), cyArc + r * Math.cos(phi) - lift];
+    let cx = xm;
+    let cyArc = y - r;
+    // as it closes, the ring settles around its target (the first cell)
+    if (this.ringTarget) {
+      const k = Math.min(1, Math.max(0, (b - 0.3) / 0.7));
+      const e = k * k * (3 - 2 * k);
+      const svgTop = window.innerHeight - (this.s.getBoundingClientRect().height || window.innerHeight * 0.3);
+      cx += (this.ringTarget[0] - cx) * e;
+      cyArc += (this.ringTarget[1] - svgTop - cyArc) * e;
+    }
+    return [cx + r * Math.sin(phi), cyArc + r * Math.cos(phi)];
   }
 
   private pathFor(a0: number, a1: number): string {

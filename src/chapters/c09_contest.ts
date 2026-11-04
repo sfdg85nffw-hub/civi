@@ -120,9 +120,9 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
       const R = g === 0 || (b.t0 > MERGED_T && g === 3) ? 46 : g === 3 ? 58 : 28;
       rig = orbit({ center: [gc[0], gc[1], gc[2]], radius: R * 1.08, radiusTo: R, elev: 1.0, elevTo: 0.9, az, azTo: az + 0.2, fov: 34, ease: easeInOutSine });
     } else if (style === 'grazing') {
-      rig = orbit({ center, radius: 26, radiusTo: 22, elev: 0.16, elevTo: 0.22, az, azTo: az + 0.3, fov: 34, ease: easeInOutSine });
+      rig = orbit({ center, radius: 36, radiusTo: 30, elev: 0.2, elevTo: 0.26, az, azTo: az + 0.3, fov: 34, ease: easeInOutSine });
     } else {
-      rig = orbit({ center, radius: 25, radiusTo: 20, elev: 0.85, elevTo: 0.72, az, azTo: az + 0.35, fov: 36, ease: easeInOutSine });
+      rig = orbit({ center, radius: 34, radiusTo: 28, elev: 0.85, elevTo: 0.72, az, azTo: az + 0.35, fov: 36, ease: easeInOutSine });
     }
     shots.push({ id: `co-beat${i}-${e.type}`, stage: 'galaxy', dur: d, label: e.text, signature: b.w >= 0.85, transition: { type: 'dissolve', dur: Math.min(1.2, d * 0.3) }, rig, params: { su: 0.55, territory: 2.6 } });
   });

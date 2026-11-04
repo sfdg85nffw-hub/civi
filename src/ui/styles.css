@@ -52,8 +52,8 @@ button:focus-visible { outline: 1px solid var(--ink-dim); outline-offset: 4px; }
 .card .line { font-weight: 100; font-size: clamp(18px, 2.7vmin, 30px); letter-spacing: 0.32em; color: var(--ink); padding-left: 0.32em; }
 
 /* ---------- chronicle ---------- */
-.chronicle { position: fixed; left: 5vw; bottom: 9.5vh; max-width: min(56ch, 70vw); pointer-events: none; }
-.chronicle .entry { font-weight: 200; font-size: clamp(11px, 1.3vmin, 14px); letter-spacing: 0.08em; line-height: 1.7; color: var(--ink); opacity: 0; transition: opacity 1.4s var(--ease), transform 1.4s var(--ease); transform: translateY(6px); }
+.chronicle { position: fixed; left: 5vw; bottom: 9.5vh; max-width: min(92ch, 86vw); pointer-events: none; }
+.chronicle .entry { font-weight: 200; font-size: clamp(11px, 1.3vmin, 14px); letter-spacing: 0.08em; line-height: 1.7; color: var(--ink); white-space: nowrap; text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.8); opacity: 0; transition: opacity 1.4s var(--ease), transform 1.4s var(--ease); transform: translateY(6px); }
 .chronicle .entry.on { opacity: 0.86; transform: none; }
 .chronicle .entry .when { color: var(--ink-dim); margin-right: 0.9em; letter-spacing: 0.14em; }
 
@@ -111,3 +111,4 @@ button:focus-visible { outline: 1px solid var(--ink-dim); outline-offset: 4px; }
 .coda-counter { position: fixed; left: 0; right: 0; bottom: 14vh; text-align: center; font-weight: 100; letter-spacing: 0.32em; font-size: clamp(14px, 1.6vw, 22px); color: var(--ink); opacity: 0; transition: opacity 1.6s var(--ease); pointer-events: none; }
 .coda-counter.on { opacity: 0.85; }
 #ui.coda-black .hud, #ui.coda-black .chronicle, #ui.coda-black .card { opacity: 0 !important; transition: opacity 0.6s; }
+@media (max-width: 700px) { .chronicle .entry { white-space: normal; } }

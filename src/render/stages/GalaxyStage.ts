@@ -56,6 +56,7 @@ export class GalaxyStage extends Stage {
     fade: uniform(1),
     /** Coda: seconds into the Coda (−1 before it), per-galaxy saturation flags */
     codaC: uniform(-1),
+    fscale: uniformArray(Array.from({ length: MAXF }, () => new THREE.Vector4(1, 0, 0, 0)), 'vec4'),
     satGal: uniformArray(Array.from({ length: 5 }, () => new THREE.Vector4()), 'vec4'),
   };
   private uni!: Universe;
@@ -77,7 +78,7 @@ export class GalaxyStage extends Stage {
   private tmp2: [number, number, number] = [0, 0, 0];
 
   build(): void {
-    this.post = { bloom: 0.55, threshold: 0.35, exposure: 1.0, grain: 0.03, vignette: 0.38, chroma: 0.0012 };
+    this.post = { bloom: 0.32, threshold: 0.6, exposure: 1.0, grain: 0.03, vignette: 0.42, chroma: 0.0012 };
     this.camera.near = 0.05;
     this.camera.far = 2e5;
     this.scene.background = new THREE.Color(0, 0, 0);
@@ -120,9 +121,9 @@ export class GalaxyStage extends Stage {
   }
 
   /** keep tiny sources at ≥ ~1.3 px; conserve their flux as they grow */
-  private pxSize(center: N, worldSize: N, maxPx = 0): [N, N] {
+  private pxSize(center: N, worldSize: N, maxPx = 0, minPx = 1.3): [N, N] {
     const vz = modelViewMatrix.mul(vec4(center, 1.0)).z.negate().max(0.01);
-    const minS = vz.mul(1.3).div(this.u.focalPx);
+    const minS = vz.mul(minPx).div(this.u.focalPx);
     let s = max(worldSize, minS);
     const flux = worldSize.div(s).pow(2.0);
     // stars stay points even when the camera passes close to them
@@ -159,9 +160,10 @@ export class GalaxyStage extends Stage {
         const k = select(u.codaC.lessThan(0.0), float(0.0), sst(tOut.sub(0.9), tOut, u.codaC));
         const base = mix(vec3(1.0, 0.82, 0.6), vec3(0.7, 0.8, 1.0), at.b.x);
         // a whole galaxy's light in a pixel or two: give the candles a visible minimum
-        const lum = flux.max(0.035).mul(select(u.codaC.greaterThan(0.0), float(2.2), float(1.0)));
+        const inCoda = select(u.codaC.greaterThan(0.0), float(1.0), float(0.0));
+        const lum = flux.max(0.035).mul(inCoda.mul(3.0).add(1.0));
         const col = mix(base, vec3(1.0, 0.12, 0.03), sst(0.0, 0.6, k)).mul(float(1.0).sub(k)).mul(0.6).mul(lum).mul(u.fade);
-        return { center: at.a.xyz, size: s.max(at.a.xyz.length().mul(2.2).div(u.focalPx)), color: col, rotation: at.b.z.mul(6.28) };
+        return { center: at.a.xyz, size: s.max(at.a.xyz.length().mul(inCoda.mul(2.5).add(2.2)).div(u.focalPx)), color: col, rotation: at.b.z.mul(6.28) };
       },
     });
   }
@@ -188,7 +190,7 @@ export class GalaxyStage extends Stage {
           y = r * ct * 0.62;
           z = r * st * Math.sin(ph);
           temp = rng.range(0.0, 0.3);
-          lum = 0.3 + rng.next() * 0.45;
+          lum = 0.2 + rng.next() * 0.3;
           kind = 1;
         } else if (roll < G.bulge * 1.6 + G.bar + 0.02) {
           const bx = rng.normal(0, G.barLen * 0.42), bz = rng.normal(0, G.barLen * 0.13);
@@ -201,7 +203,8 @@ export class GalaxyStage extends Stage {
         } else {
           // disk: old stars everywhere, young blue stars crowd the arms
           let r = 0, th = 0, d = 0;
-          const young = rng.next() < 0.4;
+          // Andromeda is an older, redder, dustier disk than ours: fewer young blue stars
+          const young = rng.next() < (g === 3 ? 0.2 : 0.4);
           for (let tries = 0; tries < 40; tries++) {
             r = -G.scale * Math.log(1 - rng.next() * 0.996);
             if (r > G.radius * 1.1) continue;
@@ -396,14 +399,16 @@ export class GalaxyStage extends Stage {
         const contested = at.st.z;
         const [s, flux] = this.pxSize(p, at.b.x, 110);
         // world-space coordinate of each fragment, for patterns that line up across sprites
-        const wcol = mix(fc.xyz, sc.xyz, contested.mul(0.45));
         const vis = select(has, float(1.0), float(0.0)).mul(this.erased(p)).mul(u.territory).mul(u.fade);
+        const vVis = T.varying(vis.mul(flux));
+        // small powers are drawn brighter, so a rival's territory reads against an empire
+        const presence = u.fscale.element(oi).x;
         return {
           center: p,
           size: s,
-          color: wcol.mul(vis).mul(flux),
+          color: fc.xyz,
           alpha: float(1.0),
-          shape: (q: N) =>
+          fragment: (q: N) =>
             Fn(() => {
               const wp = p.add(u.camRight.mul(q.x.mul(s).mul(0.5))).add(u.camUp.mul(q.y.mul(s).mul(0.5)));
               const style = fc.w;
@@ -465,9 +470,15 @@ export class GalaxyStage extends Stage {
               const crisp = sst(0.6, 0.15, fw);
               const pv = mix(float(0.18), pat, crisp);
               // the interior keeps a faint lattice; the front draws it in light as it advances
-              const base = pv.mul(0.012).add(0.0022);
+              const base = pv.mul(0.009).add(0.0007).mul(presence);
               const front = glow.mul(pv.mul(0.07).add(0.012));
-              return fall.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.3))).add(moire.mul(0.09)));
+              // contested fronts: interference fringes alternating between the two powers' colours
+              const w = w1.mul(w2);
+              const fringe = sst(0.2, 0.95, abs(w)).mul(contested);
+              const twoTone = mix(fc.xyz, sc.xyz, T.step(0.0, w));
+              const col = fc.xyz.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.5)))).add(twoTone.mul(fringe.mul(0.07)));
+              void moire;
+              return vec4(col.mul(fall).mul(vVis), 1.0);
             })(),
         };
       },
@@ -488,7 +499,9 @@ export class GalaxyStage extends Stage {
       softness: 1.5,
       build: (at) => {
         const p = at.e0.xyz;
-        const [s, flux] = this.pxSize(p, at.e1.w);
+        // streaks stay legible at any scale: never thinner than a few pixels, never too faint
+        const [s, flux0] = this.pxSize(p, at.e1.w, 0, 2.6);
+        const flux = flux0.max(0.25);
         return { center: p, size: s, color: at.e2.xyz.mul(at.e2.w).mul(flux).mul(u.fade) };
       },
     });
@@ -631,6 +644,19 @@ export class GalaxyStage extends Stage {
       }
       this.lastVersion = host.version;
     }
+    // presence: smaller powers brighter (an empire's interior is a whisper; a rival's pocket is legible)
+    const counts = new Float64Array(MAXF);
+    for (let i = 0; i < un.n; i++) {
+      const o = host.owner[i]!;
+      if (o >= 0 && o < MAXF) counts[o]!++;
+    }
+    let tot = 0, nf = 0;
+    for (let k = 0; k < MAXF; k++) if (counts[k]! > 0) {
+      tot += counts[k]!;
+      nf++;
+    }
+    const mean = nf ? tot / nf : 1;
+    for (let k = 0; k < MAXF; k++) (this.u.fscale.array[k] as THREE.Vector4).set(counts[k]! > 0 ? Math.min(3.5, Math.max(0.5, Math.sqrt(mean / counts[k]!))) : 1, 0, 0, 0);
     // fresh captures glow: the front reads as a luminous shell at any speed
     const tau = Math.max(2e3, Math.abs(f.speed) * 0.3);
     for (let i = 0; i < un.n; i++) {
