@@ -330,22 +330,22 @@ Conventions
 
 ---
 
-## Chapter 10 — CODA  (story 265–300 s, then rests)
+## Chapter 10 — CODA  (37 s, then rests)
 
 **The Coda script** (story seconds relative to the Coda start, c = 0):
 
 | c (s) | Image | Sound | Notes |
 |---|---|---|---|
 | 0.0 | The galaxy view freezes its war. The victor's colour floods every galaxy it holds, a slow saturation wave. | **Silence** — everything cuts to the Tone at −42 dB, then even the Tone dips. | Victory is not celebrated. No chronicle line. |
-| 4.0 | Camera pulls back to the Local Group island. Distant galaxies begin redshifting (hue → deep red, dimming) and go out one by one like candles. | A soft breath per candle, descending. | Counter starts accelerating: +10¹¹, +10¹², +10¹³. |
-| 9.0 | `+10¹⁴ years` — the victor's stars dim from blue to red to black. | Low drone thins. | The counter blurs; digits smear. |
-| 11.0 | Structures shrink and huddle around the last black holes (gravitational-lensing shader, accretion rings of the victor's colour), harvesting them. | Slow sub pulses. | `+10⁴⁰`. |
-| 14.0 | Black holes evaporate one by one (soft Hawking flashes, reduced-flash aware). `+10¹⁰⁰`. | Each evaporation a fading chime. | |
-| 16.0 | The last black hole evaporates. One point of computation remains, dimming. | Everything narrows to the **Tone** — the same 220 Hz sine as the Prologue. | |
-| 18.0 | Camera pushes into the point. Inside it, this viewer's run plays **backward and accelerating**: galactic war → swarm → last light → cities → empires → fire → Cambrian → mats → the first cell. | The Tone, with a faint reversed shimmer. | Unique per viewing (Recorder keyframes). |
-| 25.0 | **Black.** Five seconds of true black and true silence. No UI. | Silence (master 0). | |
-| 30.0 | **Return**: the exact opening frame of the vent, bit-identical, except the spark is the victor's colour. | The Tone returns and resolves into the open chord. | |
-| 33.0 | **The ring**: the timeline bar fades in and slowly curls until its end meets its beginning — a closed ring. | Chord held. | Rests until the user presses play → new run, new future. |
+| 3.5 | Camera pulls back to the Local Group island. Distant galaxies begin redshifting (hue → deep red, dimming) and go out one by one like candles. | A soft breath per candle, descending. | Counter starts accelerating: +10¹¹, +10¹², +10¹³. |
+| 8.5 | `+10¹⁴ years` — the victor's stars dim from blue to red to black. | Low drone thins. | The counter blurs; digits smear. |
+| 8.5–15 | Structures shrink and huddle around the last black holes (gravitational-lensing shader, accretion rings of the victor's colour), harvesting them. | Slow sub pulses. | `+10⁴⁰`. |
+| 11.5–15 | Black holes evaporate one by one (soft Hawking flashes, reduced-flash aware). `+10¹⁰⁰`. | Each evaporation a fading chime. | |
+| 15.0 | The last black hole evaporates. One point of computation remains, dimming. | Everything narrows to the **Tone** — the same 220 Hz sine as the Prologue. | |
+| 15.5–22 | Camera pushes into the point (15.5); the montage opens inside it (17.2). Inside it, this viewer's run plays **backward and accelerating**: galactic war → swarm → last light → cities → empires → fire → Cambrian → mats → the first cell. | The Tone, with a faint reversed shimmer. | Unique per viewing (Recorder keyframes). |
+| 22.0 | **Black.** Five seconds of true black and true silence. No UI. | Silence (master 0). | |
+| 27.0 | **Return** (the Prologue's ten seconds, replayed exactly; the spark kindles at 36.2): the exact opening frame of the vent, bit-identical, except the spark is the victor's colour. | The Tone returns and resolves into the open chord. | |
+| 34.0 | **The ring**: the timeline bar fades in and slowly curls until its end meets its beginning — a closed ring. | Chord held. | Rests until the user presses play → new run, new future. |
 
 Outcome variants
 - **Single victor**: as above; spark = victor colour.

@@ -140,9 +140,13 @@ export class MicrobeSim implements AgentSim {
         const lapA = A[y0 + xm]! + A[y0 + xp]! + A[ym + x]! + A[yp + x]! - 4 * a;
         const lapP = P[y0 + xm]! + P[y0 + xp]! + P[ym + x]! + P[yp + x]! - 4 * p;
         const ra = u * a * a, rp = r * u * p * p;
-        tmpU[i] = u + Du * lapU - ra - rp + F * (1 - u);
-        tmpA[i] = a + Dv * lapA + ra - (F + kA) * a;
-        tmpP[i] = p + Dv * lapP + rp - (F + kP) * p;
+        // explicit Euler, kept inside the physical range so it can never diverge
+        const nu = u + Du * lapU - ra - rp + F * (1 - u);
+        const na = a + Dv * lapA + ra - (F + kA) * a;
+        const np = p + Dv * lapP + rp - (F + kP) * p;
+        tmpU[i] = nu > 0 ? (nu < 1 ? nu : 1) : 0;
+        tmpA[i] = na > 0 ? (na < 1 ? na : 1) : 0;
+        tmpP[i] = np > 0 ? (np < 1 ? np : 1) : 0;
         // oxygen from phototrophs rusts dissolved iron
         this.R[i] = Math.min(1, this.R[i]! * 0.9995 + p * 0.0006);
       }
@@ -495,15 +499,28 @@ export class MicrobeSim implements AgentSim {
         p += this.P[i]!;
       }
       const want = tb * 0.22 * G2;
-      const sa = a > 1e-6 ? (want * (1 - tp)) / a : 0;
-      const sp = p > 1e-6 ? (want * tp) / p : 0;
+      // bounded rescale: a nearly empty field is reseeded rather than blown up
+      const sa = a > 1e-6 ? Math.min(3, (want * (1 - tp)) / a) : 0;
+      const sp = p > 1e-6 ? Math.min(3, (want * tp) / p) : 0;
+      let a2 = 0, p2 = 0;
       for (let i = 0; i < G2; i++) {
-        this.A[i]! *= sa;
-        this.P[i]! *= sp;
+        this.A[i] = Math.min(1, this.A[i]! * sa);
+        this.P[i] = Math.min(1, this.P[i]! * sp);
+        a2 += this.A[i]!;
+        p2 += this.P[i]!;
+      }
+      // whatever the bounded rescale could not supply is spread as a thin film (exact landing)
+      if (a > 1e-6) {
+        const da = (want * (1 - tp) - a2) / G2;
+        if (Math.abs(da) > 1e-9) for (let i = 0; i < G2; i++) this.A[i] = Math.max(0, this.A[i]! + da);
+      }
+      if (p > 1e-6) {
+        const dp = (want * tp - p2) / G2;
+        if (Math.abs(dp) > 1e-9) for (let i = 0; i < G2; i++) this.P[i] = Math.max(0, this.P[i]! + dp);
       }
       // a species can't be projected from nothing: seed it where the other lives
-      if (p <= 1e-6 && tp > 0) for (let i = 0; i < G2; i++) this.P[i] = this.A[i]! * (tp / Math.max(1e-6, 1 - tp));
-      if (a <= 1e-6 && tp < 1) for (let i = 0; i < G2; i++) this.A[i] = this.P[i]! * ((1 - tp) / Math.max(1e-6, tp));
+      if (p <= 1e-6 && tp > 0) for (let i = 0; i < G2; i++) this.P[i] = Math.min(1, this.A[i]! * (tp / Math.max(1e-6, 1 - tp)));
+      if (a <= 1e-6 && tp < 1) for (let i = 0; i < G2; i++) this.A[i] = Math.min(1, this.P[i]! * ((1 - tp) / Math.max(1e-6, tp)));
       return;
     }
     const wantN = Math.round(tb * this.cellsPerBiomass());

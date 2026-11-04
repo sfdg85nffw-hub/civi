@@ -20,17 +20,18 @@
 - [ ] PROGRESS.md shows every phase checked
 
 ## Current phase
-Phase 5 → 6 — galaxy visuals, then the Coda
+Phase 6 → 7 — Coda verified structurally; full-Odyssey pacing run; reviewer passes over all chapters
 
 ## Last completed
-- Chapters 0–7 built and rendered: vent, microbial mats/colonies, endosymbiosis, Cambrian seafloor, Chicxulub, land, fire/cave hands, ancient polities with threads and plague, modern cities/sea lanes/fibre/Trinity/Apollo, Singularity (crystal lattice from datacenters, resistance sparks, last light at Tristan da Cunha, Mercury unmade, Dyson swarm).
-- GalaxySim (src/galaxy): Local Group graph, factions with genomes, light-delayed beliefs, expansion, net-pressure fronts, RKVs, Nicoll beams, triggered novae, megastructures, going dark, treaties, betrayal, value-merging, invasions, total war, vacuum decay, chronicle; worker streaming + GalaxyHost (seek/rewind via checkpoints); determinism and 50-seed balance tests pass.
-- GalaxyStage (stars, nebulae, dust, territories in each faction's visual language, streaks, novae, bubble), Chapter 8 (ring→disk, bloom, neighbours) and Chapter 9 (shots + time keys cut from the run's history), chronicle feed, fork control rewired.
+- Chapters 0–10 all built and rendering. Regime B: GalaxySim + worker + host, Expansion (ring→disk, bloom, over-the-shoulder neighbours), Contest cut from each run's history (beats, time keys, shots, chronicle, faction motifs, tension), slow-time probes/fleets from the capture log.
+- Coda: saturation of held galaxies, candles, counter to 10^100, black holes with screen-space lensing and Hawking flashes, last point, Recorder montage, 5 s true black, Return replaying the Prologue exactly with the victor's spark (saved; vacuum → white), timeline ring, rest → new run.
+- e2e: smoke (Begin; deep links into all chapters) + spark persistence (vacuum and victor seeds).
+- Scripts: capture-shots (against `vite preview`), odyssey-run (hands-free pacing contact sheet), probe-frame, debug-page, watch-galaxy, galaxy-batch.
 
 ## Next action
-1. Capture and review ch 7 swarm and ch 8–9 galaxy shots; refine the galaxy look (arm pitch, dust in grazing views, front shell, faction languages, streak legibility, collision tidal tails).
-2. Phase 6: Coda stage + script (saturation, candles, counter, black holes with lensing, last point, montage from Recorder frames, 5 s black, Return with victor spark, ring), spark persistence, vacuum variant.
-3. Then Phase 7 polish and the three reviewer passes over every signature shot.
+1. Finish the full Odyssey pacing run (`scripts/odyssey-run.mjs captures/odyssey`), build the contact sheet, check pacing/dead air and the montage.
+2. Fresh captures of all signature shots (ch 0–10) → reviewer pass A (all chapters) → fixes → passes B and C. Save reports in docs/reviews/.
+3. Phase 8: README captures (docs/media), final DoD verification, PROGRESS summary.
 
 ## Known issues
 - Headless captures must use `?backend=webgl` (see D14).

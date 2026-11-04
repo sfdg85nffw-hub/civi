@@ -296,7 +296,7 @@ export class GalaxyStage extends Stage {
       renderOrder: 4,
       build: (at) => {
         const p = this.place(at.a.xyz, at.a.w, at.b.z);
-        const [s, flux] = this.pxSize(p, at.b.x);
+        const [s, flux] = this.pxSize(p, at.b.x, 160);
         const hii = mix(vec3(1.0, 0.38, 0.5), vec3(0.85, 0.45, 1.0), at.b.w);
         const core = vec3(1.0, 0.8, 0.55);
         const col = select(at.b.y.greaterThan(0.5), core.mul(0.035), hii.mul(0.05)).mul(flux).mul(this.erased(p)).mul(u.fade).mul(float(1.0).sub(u.saturate.mul(0.7)));
@@ -343,7 +343,7 @@ export class GalaxyStage extends Stage {
       blending: THREE.NormalBlending,
       build: (at) => {
         const p = this.place(at.a.xyz, at.a.w, at.b.z);
-        const [s] = this.pxSize(p, at.b.x);
+        const [s] = this.pxSize(p, at.b.x, 70);
         return {
           center: p,
           size: s,
@@ -377,7 +377,7 @@ export class GalaxyStage extends Stage {
         sum += Math.hypot(un.lx[i]! - un.lx[j]!, un.ly[i]! - un.ly[j]!, un.lz[i]! - un.lz[j]!);
         c++;
       }
-      Bz[i * 4] = Math.min(2.2, Math.max(0.6, (c ? sum / c : 0.3) * 4.2));
+      Bz[i * 4] = Math.min(2.0, Math.max(0.55, (c ? sum / c : 0.3) * 3.5));
     }
     this.stateArr = new Float32Array(n * 4).fill(-1);
     const u = this.u;
@@ -394,7 +394,7 @@ export class GalaxyStage extends Stage {
         const sc = u.fcol.element(at.st.w.max(0.0).toInt());
         const glow = at.st.y;
         const contested = at.st.z;
-        const [s, flux] = this.pxSize(p, at.b.x);
+        const [s, flux] = this.pxSize(p, at.b.x, 110);
         // world-space coordinate of each fragment, for patterns that line up across sprites
         const wcol = mix(fc.xyz, sc.xyz, contested.mul(0.45));
         const vis = select(has, float(1.0), float(0.0)).mul(this.erased(p)).mul(u.territory).mul(u.fade);
@@ -715,6 +715,16 @@ export class GalaxyStage extends Stage {
           k++;
         }
       }
+    }
+    // the Expansion begins at one point: Sol, in the Heir's colour
+    if (f.chapter === 8 && T0 < 4e5 && nf < 256 && host.factions[0]) {
+      const c = host.factions[0].color;
+      const k = 1 - Math.min(1, T0 / 4e5);
+      nodePos(un, un.sunNode, T0, P0);
+      fa.set([P0[0], P0[1], P0[2], 0.35], nf * 4);
+      fb.set([c[0] * 2.4 * k, c[1] * 2.4 * k, c[2] * 2.4 * k, 0.0], nf * 4);
+      nf++;
+      (this.flareMesh.geometry as THREE.InstancedBufferGeometry).instanceCount = nf;
     }
     // older vacuum events persist (the bubble only grows)
     if (!vac) for (const e of host.events) if (e.type === 'vacuum' && e.t <= T0) vac = e;

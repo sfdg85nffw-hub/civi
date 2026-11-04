@@ -20,10 +20,10 @@ const errors = [];
 const IGNORE = [/GPU stall due to ReadPixels/, /popErrorScope/, /WebGL-.*Performance/];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !IGNORE.some((r) => r.test(m.text()))) errors.push(m.text()); });
-await page.goto(`${base}/?backend=webgl&capture=1&fps=${fps}&res=${res}&quality=${args.quality ?? 'low'}&seed=${seed}&autostart=1&mute=1&warm=2`);
+await page.goto(`${base}/?backend=webgl&capture=1&fps=${fps}&res=${res}&quality=${args.quality ?? 'low'}&seed=${seed}&autostart=1&mute=1&warm=2${args.s0 ? '&s=' + args.s0 : ''}`);
 await page.waitForFunction(() => window.__deeptime?.ready, null, { timeout: 300000 });
 const t0 = Date.now();
-let next = 0;
+let next = Number(args.s0 ?? 0);
 const index = [];
 for (;;) {
   const st = await page.evaluate(() => window.__deeptime.state());
@@ -34,7 +34,7 @@ for (;;) {
     console.log(`${((Date.now() - t0) / 1000).toFixed(0)}s  story ${st.s.toFixed(1)} / ${st.total.toFixed(0)}  ch ${st.chapter}  T ${st.T.toExponential(3)}  ${st.phase}${errors.length ? '  ERRORS ' + errors.length : ''}`);
     next = Math.floor(st.s / every) * every + every;
   }
-  if (st.phase === 'rest' || st.s >= st.total - 0.01) break;
+  if (st.phase === 'rest' || st.s >= st.total - 0.01 || (args.s1 && st.s >= Number(args.s1))) break;
   await page.evaluate(() => window.__deeptime.run(4));
   await page.evaluate(() => window.__deeptime.frames(4));
 }

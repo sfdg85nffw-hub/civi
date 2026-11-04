@@ -616,6 +616,7 @@ export class App {
     for (const c of chDef?.cues ?? []) if (this.lastT < c.T && T >= c.T && T - this.lastT < 5e8) this.fireCue(c.id);
 
     const out = this.director.update(f);
+    this.lastOut = out;
     this.renderLayers(f, out);
 
     // UI
@@ -747,6 +748,7 @@ export class App {
   private silenceUntil = -1;
   private lastChronT = -1e12;
   private forkShownUntil = -1;
+  private lastOut: DirectorOut | null = null;
   /** Coda */
   readonly victor = new THREE.Color(1, 1, 1);
   private victorHex = '#ffffff';
@@ -774,6 +776,8 @@ export class App {
         total: this.time.odyssey.total,
         galaxyDone: this.galaxy.done,
         frontier: this.galaxy.frontier,
+        layers: this.lastOut ? { a: this.lastOut.a?.shot.def.id ?? null, b: this.lastOut.b?.shot.def.id ?? null, mix: this.lastOut.mix, mode: this.lastOut.mixMode, fade: this.lastOut.fade, blur: this.lastOut.blur } : null,
+        post: { exposure: this.postfx?.uExposure.value, exposureB: this.postfx?.uExposureB.value, fade: this.postfx?.uFade.value, mix: this.postfx?.uMix.value, mode: this.postfx?.uMixMode.value, stageFade: this.stageFade },
         changes: this.galaxy.nChanges,
         outcome: this.galaxy.result?.outcome ?? null,
       }),
@@ -798,5 +802,7 @@ export class App {
     };
     const app = this as App;
     (window as unknown as { __deeptime: typeof api }).__deeptime = api;
+    // diagnostics in capture mode only
+    if (this.link.capture) (window as unknown as { __deeptimeApp: App }).__deeptimeApp = this;
   }
 }
