@@ -7,7 +7,7 @@ import { makeParticles } from '../particles';
 import { Rng } from '../../core/rng';
 import { clamp01, smoothstep } from '../../core/math';
 
-const { uniform, vec2, vec3, vec4, float, mix, smoothstep: sst, length, normalize, exp, abs, max, sin, cos, screenUV, viewportSharedTexture, select, Fn, texture, uv } = T;
+const { uniform, vec2, vec3, vec4, float, mix, smoothstep: sst, length, normalize, exp, abs, max, sin, cos, screenUV, viewportSharedTexture, select, Fn, texture, uv, dot } = T;
 
 const NBH = 7;
 
@@ -223,7 +223,7 @@ export class CodaStage extends Stage {
         size: float(0.16),
         // a small hot core and a wide halo in the winner's colour (it rhymes with the last human light)
         color: vec3(u.victor).mul(u.point).mul(0.9),
-        shape: (q: N) => exp(length(q).mul(-26.0)).mul(1.6).add(exp(length(q).mul(-5.0)).mul(0.22)),
+        shape: (q: N) => exp(length(q).mul(-30.0)).mul(3.2).add(exp(length(q).mul(-5.0)).mul(0.22)),
       }),
     });
   }
@@ -241,8 +241,11 @@ export class CodaStage extends Stage {
       const img = texture(this.montageTex, uv()).rgb;
       // a soft print look: warm highlights, the image falling off toward the rim
       const vig = sst(R.add(0.02), R.mul(0.35), r).mul(0.55).add(0.45);
-      const rim = exp(abs(r.sub(R)).mul(-90.0)).mul(0.5).mul(sst(0.005, 0.03, R));
-      const col = img.mul(vec3(1.05, 0.98, 0.92)).mul(vig).mul(mask).add(vec3(u.victor).mul(rim)).mul(u.montage);
+      const rim = exp(abs(r.sub(R)).mul(-200.0)).mul(0.6).mul(sst(0.005, 0.03, R));
+      // memory: the run half drained of its colour and washed in what was left
+      const lum = dot(img, vec3(0.2126, 0.7152, 0.0722));
+      const mem = mix(img, vec3(lum).mul(mix(vec3(1.0), vec3(u.victor).mul(1.4).add(0.25), 0.5)), 0.45);
+      const col = mem.mul(vec3(1.05, 0.98, 0.92)).mul(vig).mul(mask).add(vec3(u.victor).mul(rim)).mul(u.montage);
       return vec4(col, mask.max(rim).mul(u.montage));
     })();
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);

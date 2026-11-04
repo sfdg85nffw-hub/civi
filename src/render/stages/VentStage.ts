@@ -342,7 +342,7 @@ export class VentStage extends Stage {
         const p = at.a.xyz.add(drift);
         const warm = this.warmField(p);
         const ds = p.sub(vec3(PROTOCELL.x, PROTOCELL.y, PROTOCELL.z));
-        const Ls = this.uSparkI.mul(0.004).div(ds.dot(ds).add(0.002));
+        const Ls = this.uSparkI.mul(0.0022).div(ds.dot(ds).add(0.002));
         const viewP = cameraViewMatrix.mul(modelWorldMatrix.mul(vec4(p, 1.0)));
         const depth = viewP.z.negate().max(0.01);
         const coc = abs(depth.sub(focus)).div(depth).mul(aperture).mul(0.05);
@@ -357,14 +357,12 @@ export class VentStage extends Stage {
           center: p,
           size,
           color: col,
-          // hexagonal aperture for out-of-focus discs
+          // round out-of-focus discs, soft-edged (a lens wide open, not a hexagonal iris)
           shape: (q: N) => {
-            const ang = atan(q.y, q.x);
-            const hex = cos(float(Math.PI / 6)).div(cos(ang.mod(Math.PI / 3).sub(Math.PI / 6)));
-            const r = length(q).div(hex);
-            const disc = sstep(1.0, 0.86, r);
-            const soft = float(1.0).sub(length(q)).max(0.0).pow(1.2);
-            return mix(soft, disc.mul(r.mul(0.25).add(0.75)), sstep(0.0005, 0.004, coc));
+            const r = length(q);
+            const disc = sstep(1.0, 0.8, r);
+            const soft = float(1.0).sub(r).max(0.0).pow(1.2);
+            return mix(soft, disc.mul(r.mul(0.15).add(0.6)), sstep(0.0005, 0.004, coc));
           },
         };
       },
@@ -500,7 +498,7 @@ export class VentStage extends Stage {
         softness: 8.0,
         build: (at) => {
           const flick = float(1.0).add(sin(t.mul(31.0)).mul(0.06)).add(sin(t.mul(17.0)).mul(0.07));
-          return { center: at.a.xyz, size: float(0.0032), color: vec3(sc).mul(I.mul(flick).mul(0.3)).add(vec3(I.mul(0.006))) };
+          return { center: at.a.xyz, size: float(0.0032), color: vec3(sc).mul(I.mul(flick).mul(0.16)).add(vec3(I.mul(0.003))) };
         },
       }),
     );

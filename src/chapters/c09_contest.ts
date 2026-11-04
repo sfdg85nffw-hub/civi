@@ -122,10 +122,22 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
       // the whole galaxy, but composed around the beat: the event sits a third of the way in, the core off-centre
       const tc: [number, number, number] = [gc[0] + (center[0] - gc[0]) * 0.65, gc[1] + (center[1] - gc[1]) * 0.65, gc[2] + (center[2] - gc[2]) * 0.65];
       rig = orbit({ center: tc, radius: R * 1.0, radiusTo: R * 0.9, elev: 1.0, elevTo: 0.9, az, azTo: az + 0.2, fov: 34, ease: easeInOutSine });
-    } else if (style === 'grazing') {
-      rig = orbit({ center, radius: 36, radiusTo: 30, elev: 0.2, elevTo: 0.26, az, azTo: az + 0.3, fov: 34, ease: easeInOutSine });
     } else {
-      rig = orbit({ center, radius: 34, radiusTo: 28, elev: 0.85, elevTo: 0.72, az, azTo: az + 0.35, fov: 36, ease: easeInOutSine });
+      // the event on a third, the galaxy's core on the other side of frame: the camera looks across
+      // the line from the core to the event, aimed a sixth of a frame beyond the event; events near
+      // a core are shot closer so the bulge never sits on top of them
+      const ox = center[0] - gc[0], oz = center[2] - gc[2];
+      const rE = Math.hypot(ox, center[1] - gc[1], oz);
+      const L = Math.hypot(ox, oz);
+      const dx = L > 0.2 ? ox / L : Math.cos(az), dz = L > 0.2 ? oz / L : Math.sin(az);
+      const R = Math.min(34, Math.max(15, 9 + rE * 3.5));
+      const side = rng.next() < 0.5 ? 1 : -1;
+      const az0 = Math.atan2(dx, dz) + side * (Math.PI / 2 - 0.25);
+      const off = R * 0.19;
+      const tgt: [number, number, number] = [center[0] + dx * off, center[1], center[2] + dz * off];
+      rig = style === 'grazing'
+        ? orbit({ center: tgt, radius: R * 1.05, radiusTo: R * 0.92, elev: 0.22, elevTo: 0.28, az: az0, azTo: az0 + 0.2 * side, fov: 34, ease: easeInOutSine })
+        : orbit({ center: tgt, radius: R * 1.08, radiusTo: R * 0.94, elev: 0.85, elevTo: 0.74, az: az0, azTo: az0 + 0.22 * side, fov: 36, ease: easeInOutSine });
     }
     // the beat's protagonist: its colour is the brightest thing on screen while the beat lasts
     const hero = e.type === 'extinct' ? e.b : e.a >= 0 ? e.a : e.b;

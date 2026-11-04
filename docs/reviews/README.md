@@ -43,3 +43,21 @@ fixes by impact. Its report is saved here verbatim; the fixes applied are listed
 - Framing: whole-galaxy beats are composed around the event (core off-centre); the collision is closer, with tidal tails and a bridge; Andromeda older and redder; *Neighbours* is a telephoto over our disk with Andromeda in the upper third.
 - Return: the spark keeps its hue (less white core, coloured halo); the settled timeline ring widens to frame the first cell from a distance.
 
+| C | Chapters 0–7 (24 frames) | [passC-ch0-7.md](passC-ch0-7.md) |
+
+### Fixes applied after pass C (chapters 0–7)
+- Prologue: the ember centred just below frame centre and up to heat within two seconds; the membrane centred (the Return's ring closes concentrically around it); round bokeh instead of hexagons; a smaller, more saturated spark.
+- Night sides: sparse city points (a third of a Worley cell) with continuous cores, so no cell mosaic; tailed thread beads instead of round nodes; a darker Threads ground with the polity wash at a third.
+- Beats: the Apollo mote climbs off the limb into the black along a camera-space arc; the last light's halo shares the core's lift and falls off as a Gaussian; Chicxulub's curtain graded from a white-hot lip to soot with radial rays and a hot core; the GOE sky clears across the disc; Drift greener with a terminator.
+- Swarm: collectors as small dark silhouettes that glint only when they turn toward us, waste heat dimmed, a limb-darkened Sun below white, less bloom.
+- Cave and fire: a calmer wall (weaker normal noise), denser ochre spray around each hand, hands ending at the wrist; the fire stage's bloom and exposure brought down.
+| C | Chapters 8–10 (15 frames) | [passC-ch8-10.md](passC-ch8-10.md) |
+
+### Fixes applied after pass C (chapters 8–10)
+- Extinctions are the killer's beat: the power that took the last node is lifted; the victim keeps only its collapsing pocket, drawn in its colour.
+- Every beat's event is drawn in a vivid display version of its power's colour (saturation ≥ 0.65, kept below white).
+- Composition: regional and grazing beats put the event on a third with the core on the other side, shot closer when the event is near a core.
+- Exposure adapts to the distance to what the rig is looking at (not to the distance from the Milky Way), so Andromeda and Triangulum are no longer blown out.
+- Fronts are two hairline seams, one per power, just inside the contact line (no hatching).
+- The collision's tides are stronger, with wider sweeping tails; Andromeda's old disk is cooler.
+- Coda: the island glow in Candles is ~3× wider; the last point's core is twice as bright; the montage iris rim is a hairline and the run inside it is half-drained and washed in the victor's colour; the settled ring is tighter.

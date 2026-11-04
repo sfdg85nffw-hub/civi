@@ -96,7 +96,7 @@ export class Timeline {
     const k = Math.min(1, Math.max(0, (b - 0.3) / 0.7));
     const e = this.ringTarget ? k * k * (3 - 2 * k) : 0;
     // as it settles the ring widens, so it frames the first cell from a distance (never a reticle)
-    const r = (L / theta) * (1 + 0.6 * e);
+    const r = (L / theta) * (1 + 0.3 * e);
     // arc centred above the bar's midpoint; midpoint stays fixed, ends rise
     const phi = (a - 0.5) * theta; // angle from the bottom
     let cx = xm;

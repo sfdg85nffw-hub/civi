@@ -79,7 +79,7 @@ export class GalaxyStage extends Stage {
   private nbArr!: Float32Array;
   private nbAttr!: THREE.InstancedBufferAttribute;
   /** the Contest beat on screen: its protagonist, its place, its moment */
-  private beat = { hero: -1, other: -1, node: -1, t: 0, type: '' };
+  private beat = { hero: -1, other: -1, node: -1, t: 0, type: '', flareF: -1 };
   private evBuf: GEvent[] = [];
   private agNode = new Int32Array(MAX_AGENTS);
   private agOwner = new Int8Array(MAX_AGENTS);
@@ -123,7 +123,7 @@ export class GalaxyStage extends Stage {
     // opposite ways on the near and far sides (an S of stars and a bridge between the pair)
     const tang = normalize(T.cross(u.sep, vec3(0.0, 1.0, 0.0)).add(vec3(0.0001, 0.0, 0.0)));
     const outer = sst(6.0, 16.0, r);
-    const tidal = u.sep.mul(along.mul(u.tidal).mul(sst(4.0, 14.0, r))).add(tang.mul(along.mul(u.tidal).mul(outer).mul(1.3)));
+    const tidal = u.sep.mul(along.mul(u.tidal).mul(sst(4.0, 14.0, r))).add(tang.mul(along.mul(u.tidal).mul(outer).mul(1.8)));
     // an isotropic direction from two decorrelated hashes of the star's seed
     const th = fract(seed.mul(9187.31)).mul(6.2832);
     const zz = fract(seed.mul(4273.13)).mul(2.0).sub(1.0);
@@ -240,7 +240,7 @@ export class GalaxyStage extends Stage {
           x = r * Math.cos(th);
           z = r * Math.sin(th);
           y = rng.normal(0, G.thickness * (young ? 0.45 : 1.1) * (1 + r / 15));
-          temp = young ? rng.range(0.65, 1.0) : rng.range(0.15, 0.6);
+          temp = young ? rng.range(0.65, 1.0) : g === 3 ? rng.range(0.02, 0.4) : rng.range(0.15, 0.6);
           lum = young ? 0.5 + Math.pow(rng.next(), 4) * 4 : 0.5 + rng.next() * 0.6;
           kind = young ? 2 : 0;
         }
@@ -505,19 +505,21 @@ export class GalaxyStage extends Stage {
               const front = glow.mul(pv.mul(0.07).add(0.012)).mul(frontK);
               // contested fronts: bands parallel to the border, alternating between the two powers'
               // colours, at a period fixed in screen terms (never a 1-px moiré)
-              const gc = u.galC.element(at.a.w.toInt()).xyz;
-              const ph = dot(wp.sub(gc), at.nb.xyz).mul(u.fringeK).sub(u.time.mul(1.4));
-              const w = sin(ph);
-              const fringe = sst(0.25, 0.9, abs(w)).mul(contested).mul(offCore).mul(at.nb.w);
-              // both sides of a border share the band orientation: positive bands take the higher-index power
+              // each side draws a thin seam of its own colour just inside the contact line, so a
+              // front reads as two hairlines, one per power (normals are stored low→high index)
               const low = at.st.x.lessThan(at.st.w);
-              const hiC = select(low, sc.xyz, fc.xyz), loC = select(low, fc.xyz, sc.xyz);
-              const twoTone = mix(loC, hiC, T.step(0.0, w));
+              const toward = at.nb.xyz.mul(select(low, float(1.0), float(-1.0)));
+              const along = dot(wp.sub(p), toward);
+              const hB = at.b.x.div(7.0);
+              const sig = length(wp.sub(T.cameraPosition)).div(u.focalPx).mul(1.3);
+              const seam = exp(along.sub(hB.sub(sig.mul(1.2))).div(sig).pow(2.0).negate());
+              const fringe = seam.mul(contested).mul(offCore).mul(at.nb.w);
+              void sc;
               // territory fills are drawn more saturated than the faction swatch (pale hues read as grey once summed)
               const fcol = fc.xyz;
               const lum = dot(fcol, vec3(0.2126, 0.7152, 0.0722));
               const fsat = mix(vec3(lum), fcol, 1.8).max(0.0);
-              const col = fsat.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.4)))).add(twoTone.mul(fringe.mul(0.05).mul(frontK.min(1.2))));
+              const col = fsat.mul(base.add(front).mul(float(1.0).sub(contested.mul(0.4)))).add(fsat.mul(fringe.mul(0.14).mul(frontK.min(1.2))));
               void moire;
               return vec4(col.mul(fall).mul(vVis), 1.0);
             })(),
@@ -613,7 +615,7 @@ export class GalaxyStage extends Stage {
     const d = Math.hypot(m31[0], m31[1], m31[2]);
     (u.sep.value as THREE.Vector3).set(m31[0], m31[1], m31[2]).normalize();
     const enc = T0 > COLLISION_T - 6e8 && T0 < MERGED_T + 5e8 ? Math.exp(-(((d - 18) / 60) ** 2)) : 0;
-    u.tidal.value = enc * 0.6;
+    u.tidal.value = enc * 1.0;
     u.puff.value = Math.min(1, Math.max(0, (T0 - MERGED_T + 4e8) / 1.5e9));
     // camera basis for world-space patterns
     const cam = this.camera;
@@ -634,8 +636,10 @@ export class GalaxyStage extends Stage {
     this.beat.node = Number(p.heroNode ?? -1);
     this.beat.t = Number(p.beatT ?? 0);
     this.beat.type = bt;
+    // the event is drawn in the protagonist's colour (the dying power's, for an extinction)
+    this.beat.flareF = this.beat.hero;
     // the eye adapts: whole galaxies seen from far away are allowed to be bright
-    const camD = this.camera.position.length();
+    const camD = this.lookDist;
     u.starGain.value = Number(p.starGain ?? 1) * (1 + 1.6 * Math.min(1, Math.max(0, (camD - 150) / 700)));
     const coda = String(p.coda ?? '');
     const victor = (f as FrameContext & { victor?: THREE.Color }).victor;
@@ -676,12 +680,12 @@ export class GalaxyStage extends Stage {
       if (victor && !p.vacuum) {
         const fa = this.flares.a!.array as Float32Array, fb = this.flares.b!.array as Float32Array;
         const camD = this.camera.position.length();
-        const amp = 0.5 * smoothstep01((camD - 500) / 2500) * u.saturate.value;
+        const amp = 0.32 * smoothstep01((camD - 500) / 2500) * u.saturate.value;
         let nf = 0;
         for (let g = 0; g < 5 && amp > 0; g++) {
           if ((u.satGal.array[g] as THREE.Vector4).x < 0.5) continue;
           const gc = galaxyCenter(g, T0, this.tmp);
-          fa.set([gc[0], gc[1], gc[2], Math.max(40, camD * 0.05)], nf * 4);
+          fa.set([gc[0], gc[1], gc[2], Math.max(40, camD * 0.16)], nf * 4);
           fb.set([victor.r * amp, victor.g * amp, victor.b * amp, 0.0], nf * 4);
           nf++;
         }
@@ -747,14 +751,21 @@ export class GalaxyStage extends Stage {
       nf++;
     }
     const mean = nf ? tot / nf : 1;
-    const hb = this.beat.hero;
+    let hb = this.beat.hero;
+    let other = this.beat.other;
+    if (hb >= 0 && this.beat.type === 'extinct' && this.beat.node >= 0) {
+      // an extinction is the killer's beat: it is lifted; the victim keeps only its last pocket
+      const k = host.owner[this.beat.node]!;
+      other = hb;
+      hb = k >= 0 && k !== other ? k : -1;
+    }
     for (let k = 0; k < MAXF; k++) {
       let x = counts[k]! > 0 ? Math.min(3.5, Math.max(0.5, Math.sqrt(mean / counts[k]!))) : 1, z = 1;
       if (hb >= 0) {
         if (k === hb) {
           x = Math.min(6, Math.max(1.5, x * 2.6));
           z = 2.0;
-        } else if (k === this.beat.other) {
+        } else if (k === other) {
           x *= 0.8;
         } else {
           x *= 0.3;
@@ -860,9 +871,9 @@ export class GalaxyStage extends Stage {
     }
     // the Contest beat's event, in its protagonist's colour: a spark for an awakening, a collapsing
     // ring for an extinction, a slow pulse for a war, a treaty, a betrayal
-    const bh = this.beat.hero;
+    const bh = this.beat.flareF;
     if (bh >= 0 && this.beat.node >= 0 && nf < 256 && host.factions[bh]) {
-      const c = host.factions[bh]!.color;
+      const c = vivid(host.factions[bh]!.color);
       nodePos(un, this.beat.node, T0, P0);
       const D = Math.max(1, Math.hypot(this.camera.position.x - P0[0], this.camera.position.y - P0[1], this.camera.position.z - P0[2]));
       const fh = 2 * Math.tan((this.camera.fov * Math.PI) / 360) * D;
@@ -871,7 +882,7 @@ export class GalaxyStage extends Stage {
       let shell: number, amp: number;
       if (ty === 'emerge' || ty === 'intrude' || ty === 'reveal') {
         // ignition: nothing before the moment, then a bright point and an expanding ring
-        amp = sec < 0 ? 0.25 * Math.exp(sec * 2) : 0.55 + 1.1 * Math.exp(-sec * 0.6);
+        amp = sec < 0 ? 0.2 * Math.exp(sec * 2) : 0.5 + 0.7 * Math.exp(-sec * 0.6);
         shell = sec < 0 ? 0.08 : Math.min(0.9, 0.1 + sec * 0.32);
       } else if (ty === 'extinct') {
         // the last pocket closes in on itself, then goes out
@@ -883,7 +894,7 @@ export class GalaxyStage extends Stage {
       }
       const g = amp * (f.reducedFlash ? 0.6 : 1);
       fa.set([P0[0], P0[1], P0[2], fh * 0.16], nf * 4);
-      fb.set([c[0] * 1.3 * g, c[1] * 1.3 * g, c[2] * 1.3 * g, shell], nf * 4);
+      fb.set([c[0] * 0.95 * g, c[1] * 0.95 * g, c[2] * 0.95 * g, shell], nf * 4);
       nf++;
     }
     // older vacuum events persist (the bubble only grows)
@@ -916,4 +927,18 @@ void uniform;
 function smoothstep01(x: number): number {
   const t = Math.min(1, Math.max(0, x));
   return t * t * (3 - 2 * t);
+}
+
+/** a display version of a faction colour: same hue, saturation ≥ 0.65, full value */
+function vivid(c: readonly number[]): [number, number, number] {
+  const r = c[0]!, g = c[1]!, b = c[2]!;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (mx <= 0) return [1, 1, 1];
+  const sat = (mx - mn) / mx;
+  if (sat < 1e-3) return [1, 1, 1];
+  const S = Math.max(0.65, sat);
+  // rescale each channel's distance from the max so the hue is kept
+  const k = S / sat;
+  const f = (x: number): number => Math.max(0, 1 - ((mx - x) / mx) * k);
+  return [f(r), f(g), f(b)];
 }
