@@ -36,6 +36,8 @@ if (audio) {
     window.__probe = { an, buf: new Float32Array(2048) };
   });
   if (args.s0) {
+    // the Contest's time map exists only once the galaxy's history is known: seek after it
+    if (Number(args.s0) >= 190) await page.waitForFunction(() => window.__deeptime.state().galaxyDone, null, { timeout: 600000 });
     await page.evaluate((s) => window.__deeptime.seek(s), Number(args.s0));
     await page.waitForFunction(() => window.__deeptime?.ready, null, { timeout: 300000 });
   }

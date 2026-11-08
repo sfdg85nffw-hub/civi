@@ -30,8 +30,8 @@ export const BEATS: DramaBeat[] = [
   // I — Foothold
   { id: 'spark', shot: 'p-membrane', at: 0.786, build: 2.4, inhale: 0.35, hit: 0.28 },
   { id: 'mats', shot: 'm-mat', at: 0.3, date: '3.5 billion years ago', line: 'Mats of microbes. For a billion years, nothing else.' },
-  { id: 'oxygen', T: -2.4e9, date: '2.4 billion years ago', line: 'Life poisoned its own sky.', build: 3, inhale: 0.3, hit: 0.45, lineAt: 0.7 },
-  { id: 'ice', shot: 'm-snowball', at: 0.25, date: '2.3 billion years ago', line: 'The ice reached the equator.', hit: 0.3, lineAt: 0.5 },
+  { id: 'oxygen', shot: 'm-goe', at: 0.4, T: -2.4e9, date: '2.4 billion years ago', line: 'Life poisoned its own sky.', build: 3, inhale: 0.3, hit: 0.45, lineAt: 0.7 },
+  { id: 'ice', shot: 'm-snowball', at: 0.45, date: '2.3 billion years ago', line: 'The ice reached the equator.', hit: 0.3, lineAt: 0.5 },
   { id: 'ice2', shot: 'mc-snowball', at: 0.3, date: '717 million years ago', line: 'The ice came back.' },
   { id: 'cambrian', shot: 'mc-cambrian', at: 0.3, date: '538 million years ago', line: 'Eyes. Then teeth. Then armour.' },
   // II — Catastrophe
