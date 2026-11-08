@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { T, type N } from './tsl/T';
 const {
   pass, uniform, Fn, vec2, vec3, vec4, float, uv, mix, smoothstep, length, dot, renderOutput, max, min,
-  fract, sin, clamp, Loop, int, convertToTexture, select, abs,
+  fract, sin, clamp, Loop, int, convertToTexture, select, abs, floor, step,
 } = T;
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import type { QualitySettings } from './Renderer';
@@ -42,6 +42,8 @@ export class PostFX {
   readonly uFocus: N = uniform(5);
   readonly uFocalLength: N = uniform(2);
   readonly uBokeh: N = uniform(0);
+  /** the rupture (0..1): the picture tears into displaced slices with split colour */
+  readonly uGlitch: N = uniform(0);
 
   private bloomNode: N;
 
@@ -121,10 +123,23 @@ export class PostFX {
       const isDive = uMixMode.greaterThan(1.5);
       // dive: A magnifies toward the centre while B opens from a small iris
       const zA = mix(float(1.0), float(1.0).sub(uMix.mul(0.55)), select(isDive, float(1.0), float(0.0)));
-      const pA = p.sub(0.5).mul(zA).add(0.5);
+      const pA0 = p.sub(0.5).mul(zA).add(0.5);
+      // the rupture: horizontal slices jump sideways, re-dealt ~18 times a second
+      const g = this.uGlitch;
+      const band = floor(p.y.mul(22.0).add(floor(this.uTime.mul(7.0)).mul(3.1)));
+      const tq = floor(this.uTime.mul(18.0));
+      const h1 = fract(sin(band.mul(91.7).add(tq.mul(47.3))).mul(43758.55));
+      const h2 = fract(sin(band.mul(12.9).add(tq.mul(78.2))).mul(24634.63));
+      const torn = step(float(1.0).sub(g.mul(0.75)), h1);
+      const pA = vec2(fract(pA0.x.add(h2.sub(0.5).mul(0.16).mul(g).mul(torn))), pA0.y);
       const zB = select(isDive, float(1.0).div(uMix.mul(0.75).add(0.25)), float(1.0));
       const pB = p.sub(0.5).mul(zB).add(0.5);
-      const a = sampleBlur(texA, pA).mul(this.uExposure);
+      const a = sampleBlur(texA, pA).mul(this.uExposure).toVar();
+      T.If(g.greaterThan(0.001), () => {
+        // colour splits apart along the tear; torn slices lose a little light
+        const sp = vec2(g.mul(0.014).mul(h2.add(0.4)), 0.0);
+        a.assign(vec3(texA.sample(pA.add(sp)).r, a.y.div(max(this.uExposure, 0.0001)), texA.sample(pA.sub(sp)).b).mul(this.uExposure).mul(float(1.0).sub(torn.mul(g).mul(0.25))));
+      });
       const b = texB.sample(pB).rgb.mul(this.uExposureB);
       const d = p.sub(0.5).mul(vec2(uAspect, 1.0));
       const r = length(d);

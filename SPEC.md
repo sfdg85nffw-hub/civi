@@ -130,3 +130,18 @@ Phase 8: Deploy, README with real captures, final verification against the Defin
 - Tests pass, the build is deployed (or deploy-ready), and the README is complete.
 - docs/PROGRESS.md shows every phase checked.
 Only when all of this is true, write a final summary in PROGRESS.md and stop.
+
+=====================================================================
+ADDENDUM 1 (user request, after the first Definition of Done was met)
+=====================================================================
+User, verbatim: "Make the entire thing more gripping and compelling. I feel it lacks a bit of drama."
+User, verbatim: "indeed. same workflow as before. assume work spread across sessions."
+
+This opens Phase 9 (Drama). Same workflow as phases 1–8: decisions in docs/DECISIONS.md, progress in docs/PROGRESS.md, reviewer-subagent passes, build/test/smoke before every commit, push after every step, deploy.
+
+ADDENDUM 1 — DEFINITION OF DONE (in addition to section 9)
+- Every chapter has a felt arc (set-up, escalation, release), and the film as a whole has rising stakes: the viewer always knows what is at stake in the moment on screen.
+- The great turns of the story (the spark, oxygen, the Great Dying, Chicxulub, fire, Trinity, the departure, the last human light, the takeover, first contact, Andromeda, the end) each land as an event: built up to, hit, and let go, in picture and in sound.
+- Spare dated lines carry the story in Regime A as the chronicle does in Regime B; the Coda still never states a meaning.
+- At least one reviewer-subagent pass judges the whole film's dramatic structure (pacing contact sheets plus the run's event timeline) and its top fixes are applied.
+- Tests pass, zero console errors in a full hands-free run, deployed.

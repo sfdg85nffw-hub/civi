@@ -15,7 +15,9 @@ export class Card {
     this.lineEl = el('div', 'line', this.root);
   }
 
-  show(date: string, line: string, dur = 5.2): void {
+  /** `turn`: one of the story's great turns — larger, and held longer */
+  show(date: string, line: string, dur = 5.2, turn = false): void {
+    this.root.classList.toggle('turn', turn);
     this.dateEl.textContent = date;
     this.lineEl.textContent = line;
     this.dateEl.style.display = date ? '' : 'none';

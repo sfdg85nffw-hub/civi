@@ -368,6 +368,143 @@ export class OneShots {
     n.stop(t + dur + 0.05);
   }
 
+  /**
+   * A riser: noise opening upward through a resonant band and a cluster of saws gliding up an
+   * octave, swelling to its peak exactly `dur` seconds from now and stopping dead there.
+   */
+  riser(dur = 3.5, gain = 0.12, when = 0, root = 55): void {
+    const ctx = this.ctx;
+    const t = ctx.currentTime + when;
+    const end = t + dur;
+    const n = ctx.createBufferSource();
+    n.buffer = this.noise;
+    n.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 1.4;
+    f.frequency.setValueAtTime(220, t);
+    f.frequency.exponentialRampToValueAtTime(6000, end);
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(gain * 0.12, t);
+    ng.gain.exponentialRampToValueAtTime(gain * 5.0, end - 0.02);
+    ng.gain.linearRampToValueAtTime(0, end + 0.03);
+    n.connect(f).connect(ng).connect(this.dest);
+    n.start(t);
+    n.stop(end + 0.1);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.Q.value = 2;
+    lp.frequency.setValueAtTime(200, t);
+    lp.frequency.exponentialRampToValueAtTime(3200, end);
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(gain * 0.08, t);
+    og.gain.exponentialRampToValueAtTime(gain * 1.8, end - 0.02);
+    og.gain.linearRampToValueAtTime(0, end + 0.03);
+    lp.connect(og).connect(this.dest);
+    [1, 1.5, 2, 2.997].forEach((m, i) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.detune.value = (i - 1.5) * 7;
+      o.frequency.setValueAtTime(root * m, t);
+      o.frequency.exponentialRampToValueAtTime(root * m * 2, end);
+      o.connect(lp);
+      o.start(t);
+      o.stop(end + 0.1);
+    });
+  }
+
+  /** The hit: a sub drop under a boom and a short crack. `size` 0..1. */
+  hit(size = 1, when = 0): void {
+    const ctx = this.ctx;
+    const t = ctx.currentTime + when;
+    this.boom(0.35 + 0.55 * size, 3 + 6 * size, when, 500 + 1500 * size);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(62, t);
+    o.frequency.exponentialRampToValueAtTime(24, t + 2.5 + 2 * size);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.5 * size + 0.15, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3 + 3 * size);
+    o.connect(g).connect(this.dest);
+    o.start(t);
+    o.stop(t + 6.5);
+    const n = ctx.createBufferSource();
+    n.buffer = this.noise;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1800;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.25 * size, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.12 + 0.2 * size);
+    n.connect(hp).connect(ng).connect(this.dest);
+    n.start(t, Math.random());
+    n.stop(t + 0.5);
+  }
+
+  /** One heartbeat (lub–dub): two low, damped thumps. */
+  heartbeat(gain = 0.3, when = 0): void {
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + when;
+    [[0, 1], [0.27, 0.62]].forEach(([dt, k]) => {
+      const t = t0 + dt!;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(64, t);
+      o.frequency.exponentialRampToValueAtTime(38, t + 0.16);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gain * k!, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o.connect(g).connect(this.dest);
+      o.start(t);
+      o.stop(t + 0.4);
+      const b = ctx.createOscillator();
+      b.type = 'triangle';
+      b.frequency.setValueAtTime(150, t);
+      b.frequency.exponentialRampToValueAtTime(95, t + 0.1);
+      const bg = ctx.createGain();
+      bg.gain.setValueAtTime(0, t);
+      bg.gain.linearRampToValueAtTime(gain * k! * 0.45, t + 0.008);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      b.connect(bg).connect(this.dest);
+      b.start(t);
+      b.stop(t + 0.2);
+    });
+  }
+
+  /** A digital rupture: gated square blips at random pitches over crushed noise. */
+  glitch(dur = 1.0, gain = 0.1, when = 0): void {
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + when;
+    let t = t0;
+    let k = 0;
+    while (t < t0 + dur && k++ < 40) {
+      const len = 0.02 + Math.random() * 0.07;
+      const o = ctx.createOscillator();
+      o.type = 'square';
+      o.frequency.value = [110, 220, 440, 880, 1760, 3520][Math.floor(Math.random() * 6)]! * (Math.random() < 0.3 ? 1.5 : 1);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gain * (0.4 + Math.random() * 0.6), t + 0.003);
+      g.gain.setValueAtTime(0, t + len);
+      o.connect(g).connect(this.dest);
+      o.start(t);
+      o.stop(t + len + 0.01);
+      if (Math.random() < 0.5) {
+        const n = ctx.createBufferSource();
+        n.buffer = this.noise;
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(gain * 0.8, t);
+        ng.gain.setValueAtTime(0, t + len * 0.7);
+        n.connect(ng).connect(this.dest);
+        n.start(t, Math.random());
+        n.stop(t + len);
+      }
+      t += len + Math.random() * 0.05;
+    }
+  }
+
   /** Pure sine ping (the mote, AI motifs). */
   sine(freq: number, gain = 0.08, dur = 2, when = 0, pan = 0, attack = 0.01): void {
     const ctx = this.ctx;

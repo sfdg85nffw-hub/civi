@@ -3,6 +3,9 @@ import { Renderer, type QualityTier } from '../render/Renderer';
 import { PostFX } from '../render/PostFX';
 import { TimeEngine } from '../time/TimeEngine';
 import { Director, type DirectorOut } from '../director/Director';
+import { DramaEngine } from './drama';
+import type { CamPose } from '../director/types';
+import { LAST_LIGHT_T } from '../data/singularity';
 import { FreeCamera } from '../director/FreeCamera';
 import { CHAPTERS, chapterById, TAKEOVER_T } from '../chapters/meta';
 import { CHAPTER_DEFS, STAGE_FACTORIES } from '../chapters/registry';
@@ -225,6 +228,25 @@ export class App {
   private buildUI(): void {
     this.card = new Card(this.ui);
     this.chronicle = new Chronicle(this.ui);
+    this.drama = new DramaEngine({
+      line: (date, text) => {
+        this.chronicle.retire();
+        this.chronicle.push(date ? date + '.' : '', (date ? ' ' : '') + text, 6.2);
+        this.dramaLog.push({ s: this.time.storyTime, kind: 'line', what: (date ? date + '. ' : '') + text });
+      },
+      riser: (sec) => {
+        this.audio?.drama('riser', sec);
+        this.dramaLog.push({ s: this.time.storyTime, kind: 'build', what: sec.toFixed(1) + ' s' });
+      },
+      hit: (size) => {
+        this.audio?.drama('hit', size);
+        this.dramaLog.push({ s: this.time.storyTime, kind: 'hit', what: size.toFixed(2) });
+      },
+      glitch: (sec) => {
+        this.audio?.drama('glitch', sec);
+        this.dramaLog.push({ s: this.time.storyTime, kind: 'rupture', what: sec.toFixed(1) + ' s' });
+      },
+    });
     this.timeline = new Timeline(this.ui);
     this.timeline.setSpans(this.time.odyssey.spans, this.time.odyssey.total);
     this.timeline.onScrub = (frac) => {
@@ -557,7 +579,8 @@ export class App {
     if (this.link.nocard) return;
     const m = chapterById(ch);
     if (!m.cardLine) return;
-    this.card.show(m.cardDate, m.cardLine, ch === 0 ? 6.5 : 5.2);
+    const turn = ch === 7 || ch === 8 || ch === 9;
+    this.card.show(m.cardDate, m.cardLine, ch === 0 ? 6.5 : turn ? 6.4 : 5.2, turn);
     this.cardShownFor = ch;
   }
 
@@ -615,7 +638,8 @@ export class App {
     }
     // chapter cards (Odyssey): shortly after the chapter begins
     if (this.time.mode === 'odyssey' && this.cardShownFor !== chapter) {
-      const delay = chapter === 0 ? 2.2 : 0.7;
+      // after the black beats (the Singularity, first contact) and the rupture (the takeover), later
+      const delay = chapter === 0 ? 2.2 : chapter === 7 || chapter === 9 ? 1.3 : chapter === 8 ? 1.5 : 0.7;
       if (s - span.s0 > delay && s - span.s0 < delay + 2) this.showCard(chapter);
     }
 
@@ -651,6 +675,8 @@ export class App {
       agents: this.sims.latest,
       cue: (id, x) => this.fireCue(id, x),
     };
+    // the beat engine: builds, inhales, hits, ruptures, dated lines
+    this.drama.update({ s, T, mode: this.time.mode, dt, paused: this.time.paused || this.phase !== 'running' }, this.director, this.time.odyssey);
     // sim-time cues of this chapter (fire when crossed forward)
     for (const c of chDef?.cues ?? []) if (this.lastT < c.T && T >= c.T && T - this.lastT < 5e8) this.fireCue(c.id);
 
@@ -690,8 +716,22 @@ export class App {
     // audio
     if (this.audio) {
       this.hints.o2 = f.world.o2;
-      if (chapter === 8 || chapter === 9) this.hints.tension = this.contestTension(T);
+      if (chapter === 8 || chapter === 9) this.hints.tension = Math.max(this.contestTension(T), this.drama.tension);
       this.hints.ice = f.world.ice;
+      // the story state each chapter's score responds to
+      const w = f.world;
+      this.hints.biolum = smoothstep(-6.2e8, -5.3e8, T);
+      this.hints.dread = Math.max(this.drama.tension, smoothstep(-2.6e8, -2.52e8, T) * (1 - smoothstep(-2.5e8, -2.4e8, T)));
+      this.hints.winter = this.drama.aftermath;
+      this.hints.fire = smoothstep(-1.3e6, -0.9e6, T);
+      this.hints.plague = smoothstep(-681, -679, T) * (1 - smoothstep(-672, -655, T));
+      this.hints.industry = smoothstep(-230, -40, T);
+      this.hints.human = chapter === 7 ? w.humanLights : 1;
+      this.hints.ai = chapter === 7 ? Math.min(1, Math.max(w.datacenters * 0.25, w.lattice / 0.4)) : 0;
+      // the heartbeat: from the moment it stopped asking to the last human light, quickening
+      const beating = chapter === 7 && T >= 8 && T < LAST_LIGHT_T;
+      this.hints.heart = beating ? smoothstep(8, 9.2, T) * (0.6 + 0.4 * smoothstep(12, LAST_LIGHT_T, T)) : 0;
+      this.hints.heartRate = 54 + 64 * smoothstep(8, LAST_LIGHT_T, T);
       this.audio.update({
         chapter,
         chapterU,
@@ -700,7 +740,7 @@ export class App {
         dt,
         lodMix: this.lodMix,
         hints: this.hints,
-        music: this.clock < this.silenceUntil ? 0 : this.audioOverride.music ?? 1,
+        music: this.clock < this.silenceUntil ? 0 : (this.audioOverride.music ?? 1) * this.drama.duck,
         toneDb: this.audioOverride.toneDb ?? (chapter === 0 ? -40 : -52),
         chord: this.audioOverride.chord ?? 0,
       });
@@ -735,7 +775,7 @@ export class App {
       }
       const fresh = st.lastFrame < this.frameNo - 1;
       st.lastFrame = this.frameNo;
-      st.applyPose(layer.pose, aspect);
+      st.applyPose(this.shaken(layer.pose), aspect);
       st.update({ ...f, freshStage: fresh }, layer.shot);
       if (which === 'A') {
         fx.setA(st.scene, st.camera);
@@ -767,6 +807,7 @@ export class App {
     fx.uMixMode.value = out.mixMode;
     fx.uFade.value = out.fade * (this.stageFade ?? 1);
     fx.uTime.value = f.time;
+    fx.uGlitch.value = this.drama.glitch * (this.reducedFlash ? 0.4 : 1);
     this.flashEnv *= Math.exp(-f.dt * 3.5);
     fx.uFlash.value = this.reducedFlash ? Math.min(this.flashEnv, 0.18) * 0.5 : this.flashEnv * 3.0;
     (fx.uFlashColor.value as THREE.Color).setRGB(1.0, 0.92, 0.8);
@@ -788,6 +829,9 @@ export class App {
   private lastChronT = -1e12;
   private forkShownUntil = -1;
   private lastOut: DirectorOut | null = null;
+  private drama!: DramaEngine;
+  /** what the drama engine did, in story time (for the pacing review) */
+  private dramaLog: { s: number; kind: string; what: string }[] = [];
   /** Coda */
   readonly victor = new THREE.Color(1, 1, 1);
   private victorHex = '#ffffff';
@@ -795,6 +839,20 @@ export class App {
   private counter: HTMLDivElement | null = null;
   /** capture mode: frames still allowed to advance time after ready */
   private runFrames = 0;
+
+  /** the camera trembles through a build and kicks on a hit (a translation, scaled to the framing) */
+  private shaken(pose: CamPose): CamPose {
+    const a = this.drama.shake;
+    if (a < 0.002) return pose;
+    const t = this.clock;
+    const d = pose.pos.distanceTo(pose.target) * 0.011 * a;
+    const off = new THREE.Vector3(
+      Math.sin(t * 37.1) * 0.6 + Math.sin(t * 61.7 + 1.3) * 0.4,
+      Math.sin(t * 43.3 + 2.1) * 0.6 + Math.sin(t * 71.9 + 0.4) * 0.4,
+      Math.sin(t * 29.3 + 4.2) * 0.5,
+    ).multiplyScalar(d);
+    return { ...pose, pos: pose.pos.clone().add(off), target: pose.target.clone().add(off.clone().multiplyScalar(0.4)) };
+  }
 
   private exposeAPI(): void {
     const api = {
@@ -819,7 +877,10 @@ export class App {
         post: { exposure: this.postfx?.uExposure.value, exposureB: this.postfx?.uExposureB.value, fade: this.postfx?.uFade.value, mix: this.postfx?.uMix.value, mode: this.postfx?.uMixMode.value, stageFade: this.stageFade },
         changes: this.galaxy.nChanges,
         outcome: this.galaxy.result?.outcome ?? null,
+        drama: { duck: this.drama.duck, shake: this.drama.shake, glitch: this.drama.glitch, tension: this.drama.tension },
       }),
+      dramaLog: () => this.dramaLog.slice(),
+      dramaTimeline: () => this.drama.timeline(),
       seek: (s: number) => {
         this.time.seekStory(s);
         this.director.reset();

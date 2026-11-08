@@ -9,6 +9,7 @@
 - [x] Phase 6: Coda, montage recorder, localStorage spark
 - [x] Phase 7: Global polish (match cuts, audio mix, pacing loop, perf tiers, edge cases, three reviewer passes)
 - [x] Phase 8: Deploy, README with real captures, final DoD verification
+- [ ] Phase 9: Drama (SPEC addendum 1) — see the Phase 9 plan below
 
 ## Definition of Done tracker
 - [x] Single click on Begin plays genesis→coda hands-free in ~5 min (309 s of story), no errors, no dead air — final run on the final build: story 0→219 and 217→309 (two segments, capture mode, seed 1234ABCD), zero console errors; the only dark frames are the opening black, one fade-through-black (fire → Out of Africa) and the Coda's 5 s of true black.
@@ -19,15 +20,30 @@
 - [x] Tests pass, build deployed, README complete — 34 unit tests, 50-seed balance, Playwright smoke (all chapters, zero console errors, spark persistence); GitHub Actions deploys to https://sfdg85nffw-hub.github.io/civi/ on every push; README with a 15-still gallery of real captures.
 - [x] PROGRESS.md shows every phase checked
 
+## Addendum 1 (Drama) DoD tracker
+- [ ] Every chapter has a felt arc; the film has rising stakes
+- [ ] The great turns land as events (built up to, hit, let go) in picture and sound
+- [ ] Dated lines carry Regime A; the Coda states no meaning
+- [ ] Reviewer pass D on the whole film's dramatic structure, top fixes applied
+- [ ] Tests pass, zero console errors in a full hands-free run, deployed
+
 ## Current phase
-Complete.
+Phase 9 — Drama (SPEC.md addendum 1: "Make the entire thing more gripping and compelling").
+
+## Phase 9 plan
+- [x] 9.1 Drama bible: docs/DRAMA.md (throughline, stakes, beat sheet with story times, the grammar of build/inhale/hit/release in picture and sound)
+- [ ] 9.2 Beat engine: Regime A dated lines; risers, inhale (music drops out), hits (boom, flash, camera kick) anchored to shots; camera shake; the takeover rupture (glitch in picture and sound)
+- [ ] 9.3 Sound: riser, hit, sub drop, heartbeat through the Singularity, glitch, Contest war hits and pulse
+- [ ] 9.4 Black beats before the great turns (the Singularity, first contact); card timing
+- [ ] 9.5 Pacing run + event timeline; reviewer pass D (dramatic structure); fixes
+- [ ] 9.6 Verify (build, tests, smoke, full hands-free run), deploy, README, final summary
 
 ## Last completed
 - Review pass C fixes for all chapters (centred opening frame, the mote in the black, Chicxulub curtain, GOE sweeping across the disc, sparse city lights, swarm of glints; Contest beats lifting their protagonist — the killer on extinctions — with vivid event colours on a third, exposure from the look distance, continuous lattices on the galactic plane, tidal tails; Coda in the victor's colour, memory-graded montage iris, round bokeh, tighter ring).
 - Final captures (`captures/final`, `captures/final_g`), README gallery (`docs/media`), final hands-free run.
 
 ## Next action
-None — the Definition of Done is met. Optional future work is listed under *Known issues*.
+Phase 9.2–9.4 are implemented (beat engine `src/app/drama.ts` + `src/chapters/beats.ts`, drama bus and voices in `src/audio`, rupture in PostFX, black beats, turn cards, score hints) and unit-tested; verify the Singularity → Contest stretch (`node scripts/odyssey-run.mjs captures/drama_t2 --fps=4 --every=1 --s0=160 --s1=226`), then a full sound-on pacing run (`--audio`) for reviewer pass D (9.5).
 
 ## Known issues (not blocking)
 - Headless captures must use `?backend=webgl` (see D14); SwiftShader captures are slow (galaxy frames 2–6 min at 960×540 medium).

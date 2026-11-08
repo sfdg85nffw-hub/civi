@@ -48,6 +48,10 @@ export class AudioEngine {
   readonly crackle: Granular;
   readonly shepard: Shepard;
   readonly shots: OneShots;
+  /** dramatic one-shots (risers, hits, heartbeats, the rupture): outside the silence gate */
+  readonly fx: OneShots;
+  private nextHeart = 0;
+  private nextPulse = 0;
   private muted = false;
   private lastLogSpeed = 0;
   private paletteClock = 0;
@@ -143,6 +147,32 @@ export class AudioEngine {
     this.shepard = new Shepard(ctx);
     this.shepard.out.connect(bus);
     this.shots = new OneShots(ctx, bus, this.noisePink);
+    // the drama bus bypasses the silence gate (a hit lands out of silence) and has its own room
+    const fxBus = ctx.createGain();
+    fxBus.gain.value = 0.9;
+    fxBus.connect(comp);
+    const fxConv = ctx.createConvolver();
+    fxConv.buffer = makeImpulse(ctx, 3.6);
+    const fxSend = ctx.createGain();
+    fxSend.gain.value = 0.35;
+    fxBus.connect(fxSend).connect(fxConv).connect(comp);
+    this.fx = new OneShots(ctx, fxBus, this.noiseWhite);
+  }
+
+  /** Dramatic strokes: build (riser of `a` seconds), hit (size `a`), rupture (glitch of `a` seconds). */
+  drama(kind: 'riser' | 'hit' | 'glitch', a = 1): void {
+    switch (kind) {
+      case 'riser':
+        this.fx.riser(Math.max(0.5, a), 0.11);
+        break;
+      case 'hit':
+        this.fx.hit(clamp01(a));
+        break;
+      case 'glitch':
+        this.fx.glitch(Math.max(0.2, a), 0.09);
+        this.fx.boom(0.25, 2.5, 0, 300);
+        break;
+    }
   }
 
   async resume(): Promise<void> {
@@ -220,10 +250,10 @@ export class AudioEngine {
         s.bell(midiToHz(69), 0.04, 7, 0.6, 0.3, [1, 2, 3]);
         break;
       case 'impact':
-        s.boom(0.8 * x, 9, 0, 1400);
+        this.fx.boom(0.8 * x, 9, 0, 1400);
         break;
       case 'nuke':
-        s.boom(0.45 * x, 5, 0, 2200);
+        this.fx.boom(0.45 * x, 5, 0, 2200);
         break;
       case 'mote':
         s.sine(1318.5, 0.05, 4.5, 0, 0.2, 0.05);
@@ -283,6 +313,33 @@ export class AudioEngine {
     }
     this.eventClock += a.dt;
     this.ambientEvents(a);
+    this.pulses(a);
+  }
+
+  /** The Singularity's heartbeat, and the Contest's quickening pulse. */
+  private pulses(a: AudioFrame): void {
+    const now = this.ctx.currentTime;
+    const h = a.hints;
+    const heart = h.heart ?? 0;
+    if (heart > 0.02 && a.music > 0.2) {
+      if (this.nextHeart < now - 1) this.nextHeart = now + 0.05;
+      while (this.nextHeart < now + 0.12) {
+        this.fx.heartbeat(0.16 + 0.22 * heart, Math.max(0, this.nextHeart - now));
+        this.nextHeart += 60 / Math.max(30, h.heartRate ?? 60);
+      }
+    } else this.nextHeart = 0;
+    const ten = h.tension ?? 0;
+    if ((a.chapter === 9) && ten > 0.45 && a.music > 0.2) {
+      const k = clamp01((ten - 0.45) / 0.55);
+      if (this.nextPulse < now - 1) this.nextPulse = now + 0.05;
+      while (this.nextPulse < now + 0.12) {
+        const when = Math.max(0, this.nextPulse - now);
+        this.fx.sine(49, 0.1 + 0.12 * k, 0.45, when, 0, 0.006);
+        this.fx.sine(98, 0.05 + 0.06 * k, 0.25, when, 0, 0.004);
+        this.fx.breath(0.02 + 0.03 * k, 0.12, when, 2600, 0);
+        this.nextPulse += lerp(1.05, 0.42, k);
+      }
+    } else this.nextPulse = 0;
   }
 
   /** Per-chapter sonic palettes (continuous parameters). */

@@ -10,6 +10,11 @@ export class Chronicle {
     this.root = el('div', 'chronicle passthrough', parent);
   }
 
+  /** let every line on screen go (it fades out), so the next one stands alone */
+  retire(): void {
+    for (const e of this.entries) e.age = Math.max(e.age, e.life);
+  }
+
   push(when: string, text: string, life = 6.5): void {
     const node = el('div', 'entry', this.root);
     if (when) el('span', 'when', node, when);
