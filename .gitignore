@@ -8,3 +8,4 @@ playwright-report/
 .DS_Store
 captures/tmp/
 captures/
+__pycache__/
