@@ -64,6 +64,9 @@ for (;;) {
     await page.screenshot({ path: file, timeout: 300000 });
     index.push({ file, s: st.s, T: st.T, chapter: st.chapter, phase: st.phase, waiting: st.speed === 0 });
     console.log(`${((Date.now() - t0) / 1000).toFixed(0)}s  story ${st.s.toFixed(1)} / ${st.total.toFixed(0)}  ch ${st.chapter}  T ${st.T.toExponential(3)}  ${st.phase}${errors.length ? '  ERRORS ' + errors.length : ''}`);
+    // saved as it goes, so a run cut short by a time limit still leaves its record
+    const dramaSoFar = await page.evaluate(() => (window.__deeptime.dramaLog ? window.__deeptime.dramaLog() : []));
+    fs.writeFileSync(path.join(out, 'index.json'), JSON.stringify({ errors: [...new Set(errors)], index, drama: dramaSoFar, levels, partial: true }, null, 2));
     next = Math.floor(st.s / every) * every + every;
   }
   if (st.phase === 'rest' || st.s >= st.total - 0.01 || (args.s1 && st.s >= Number(args.s1))) break;

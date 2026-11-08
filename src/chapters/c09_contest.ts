@@ -93,7 +93,7 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
   shots.push({
     id: 'co-open', stage: 'galaxy', dur: open, label: 'It was not alone',
     // a held black before "It was not alone." (docs/DRAMA.md)
-    transition: { type: 'fade', dur: 2.6 },
+    transition: { type: 'fade', dur: 3.2, hold: 1.4 },
     rig: firstGal === 0 || firstGal === 1 || firstGal === 2
       ? orbit({ center: [0, 0, 0], radius: 52, radiusTo: 46, elev: 1.0, elevTo: 0.95, az: 0.2, azTo: 0.32, fov: 34, ease: easeInOutSine })
       : shoulderRig({ T: first ? first.t0 : 1.2e9, back: 70, backTo: 62, up: 46, upTo: 40, side: 28, sideTo: 22, look: 0.07, fov: 48, fovTo: 44 }),

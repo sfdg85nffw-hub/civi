@@ -634,6 +634,8 @@ export class App {
 
     if (chapter !== this.lastChapter) {
       if (this.time.mode === 'odyssey' && this.lastChapter >= 0 && chapter === this.lastChapter + 1) this.cardShownFor = -1;
+      // the takeover and first contact begin with a clean page
+      if (chapter === 8 || chapter === 9 || chapter === 10) this.chronicle.retire();
       this.lastChapter = chapter;
     }
     // chapter cards (Odyssey): shortly after the chapter begins

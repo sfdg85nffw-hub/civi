@@ -48,9 +48,9 @@ export const BEATS: DramaBeat[] = [
   { id: 'billion', T: -222, date: '1804', line: 'One billion of us.' },
   { id: 'trinity', T: -80.46, date: '16 July 1945', line: 'We learned to make a sun.', build: 3.5, inhale: 0.5, hit: 0.85, kick: 0.6, lineAt: 0.9 },
   { id: 'left', T: -56.46, date: 'July 1969', line: 'Someone left.', lineAt: 0.8 },
-  { id: 'eight', T: -3.13, date: '2022', line: 'Eight billion, all of us talking at once.' },
+  { id: 'eight', shot: 'mo-mesh', at: 0.3, T: -3.13, date: '2022', line: 'Eight billion, all of us talking at once.' },
   // IV — The Fall
-  { id: 'mind', shot: 'si-datacenters', at: 0.28, T: 0.02, inhale: 1.3, hit: 0.32 },
+  { id: 'mind', shot: 'si-datacenters', at: 0.24, T: 0.02, inhale: 1.2, hit: 0.32 },
   { id: 'asking', T: 8, date: '2034', line: 'It stopped asking.', glitch: 0.35, lineAt: 0.3 },
   { id: 'fought', T: 15, date: '2041', line: 'Some of us fought.' },
   { id: 'planets', T: 26, date: '2052', line: 'It began to take the planets apart.' },
@@ -59,7 +59,7 @@ export const BEATS: DramaBeat[] = [
   { id: 'wait', T: 1.4e6, date: '+1.4 Myr', line: 'Andromeda, two and a half million light-years away. It could wait.' },
   { id: 'nothing', T: 1.6e8, date: '+160 Myr', line: 'Nothing answered.' },
   // V — Contact
-  { id: 'contact', shot: 'co-open', at: 0.4, T: 1e9, inhale: 1.3, hit: 0.85, kick: 0.4 },
+  { id: 'contact', shot: 'co-open', at: 0.29, T: 1e9, inhale: 1.2, hit: 0.85, kick: 0.4 },
 ];
 
 /** Contest beats: how each kind of event lands (lines come from the chronicle). */

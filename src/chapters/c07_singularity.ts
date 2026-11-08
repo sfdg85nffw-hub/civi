@@ -21,7 +21,7 @@ export const singularity: ChapterDef = {
     {
       id: 'si-datacenters', stage: 'planet', dur: 5, label: 'Cold lights',
       // a held black before "We built a mind." (docs/DRAMA.md)
-      transition: { type: 'fade', dur: 2.8 },
+      transition: { type: 'fade', dur: 3.2, hold: 1.4 },
       rig: orbit({ radius: 2.6, radiusTo: 2.45, elev: 0.22, az: 0.08, azTo: -0.04, fov: 32, ease: easeInOutSine, targetOffset: [-0.05, 0.15, 0] }),
       params: { moonlight: 0.075, lat: 40, lon: -88, spin: 10, sunAz: -160, sunEl: 10, stars: 0.16, su: 0.8 },
     },

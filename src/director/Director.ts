@@ -123,16 +123,18 @@ export class Director {
       const x = Math.min(1, this.transT / Math.max(1e-3, this.trans.dur));
       const prevPose = this.prev.def.rig(this.prev.u, f, this.prev);
       const sameStage = this.prev.def.stage === this.cur.def.stage;
-      if (sameStage || this.trans.type === 'blend') {
+      if ((sameStage && this.trans.type !== 'fade') || this.trans.type === 'blend') {
         if (sameStage) {
           out = { a: { stage: this.cur.def.stage, shot: this.cur, pose: blendPose(prevPose, poseA, x) }, b: null, mix: 0, mixMode: 0, fade: 1, blur: [0, 0] };
         } else {
           out = this.twoLayer(prevPose, poseA, x, 0);
         }
       } else if (this.trans.type === 'fade') {
-        // through black: out, then in
+        // through black: out, (held), then in
+        const h = Math.min(0.8, (this.trans.hold ?? 0) / Math.max(1e-3, this.trans.dur));
+        const a0 = (1 - h) / 2, a1 = (1 + h) / 2;
         const half = x < 0.5;
-        const k = half ? 1 - smoothstep(0, 0.5, x) : smoothstep(0.5, 1, x);
+        const k = x < a0 ? 1 - smoothstep(0, a0, x) : x < a1 ? 0 : smoothstep(a1, 1, x);
         out = half
           ? { a: { stage: this.prev.def.stage, shot: this.prev, pose: prevPose }, b: null, mix: 0, mixMode: 0, fade: k, blur: [0, 0] }
           : { a: { stage: this.cur.def.stage, shot: this.cur, pose: poseA }, b: null, mix: 0, mixMode: 0, fade: k, blur: [0, 0] };

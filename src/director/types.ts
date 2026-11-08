@@ -17,6 +17,8 @@ export type TransitionType = 'cut' | 'dissolve' | 'match' | 'dive' | 'fade' | 'b
 export interface Transition {
   type: TransitionType;
   dur: number;
+  /** fade: seconds held in true black at the middle of the fade */
+  hold?: number;
 }
 
 export interface ShotRuntime {
