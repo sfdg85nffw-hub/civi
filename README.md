@@ -34,6 +34,14 @@ Press **Begin** once. Everything after that is automatic.
 
 Stills are software-rendered headless captures (SwiftShader WebGL, `scripts/capture-shots.mjs`); on a GPU the piece runs on WebGPU with full particle budgets.
 
+## How it is told
+
+Every great turn is built up to, held and hit: a riser peaks on the beat while the camera trembles, the
+music drops out, a sub-bass hit lands with a camera kick (the takeover tears the picture itself), and a
+spare dated line lets it go. A heartbeat runs under the Singularity and stops with the last human light.
+In the war between minds, the one we built is always "It"; its rivals are named by where they came from,
+and the war ends by saying who was left. The Coda says nothing at all. ([docs/DRAMA.md](docs/DRAMA.md))
+
 ## Two regimes
 
 - **Regime A — fixed history (4 Gya → 2076).** Real milestones are pinned by a
