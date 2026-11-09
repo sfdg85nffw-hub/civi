@@ -52,5 +52,7 @@ export function voice(text: string, factions: readonly { name: string }[], epith
       return w;
     });
   }
+  // "X and it …" reads better as "It and x …"
+  s = s.replace(/^(.+?) and it\b/, (_m: string, x: string) => 'It and ' + x[0]!.toLowerCase() + x.slice(1));
   return s;
 }

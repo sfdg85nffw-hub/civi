@@ -535,7 +535,9 @@ export class App {
     // lines that fell behind the picture are dropped: the chronicle always matches the beat on screen
     const stale = Math.max(2e5, Math.abs(this.time.speed) * 1.6);
     this.chronQueue = this.chronQueue.filter((e) => T - e.t < stale);
-    if (this.chronQueue.length && this.clock - this.lastChronPush > 4.0) {
+    // while a beat's own line is still to come, the stream waits (nothing is said before it)
+    const beatPending = !!(bsh && typeof bp?.beatText === 'string' && bsh.def.id !== this.lastBeatId);
+    if (!beatPending && this.chronQueue.length && this.clock - this.lastChronPush > 4.0) {
       const e = this.chronQueue.shift()!;
       this.say(formatEpoch(e.t), v(e.text), 'contest');
       this.lastChronPush = this.clock;
