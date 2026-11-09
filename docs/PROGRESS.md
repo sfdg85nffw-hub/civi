@@ -32,9 +32,9 @@ Phase 9 — Drama (SPEC.md addendum 1: "Make the entire thing more gripping and 
 
 ## Phase 9 plan
 - [x] 9.1 Drama bible: docs/DRAMA.md (throughline, stakes, beat sheet with story times, the grammar of build/inhale/hit/release in picture and sound)
-- [ ] 9.2 Beat engine: Regime A dated lines; risers, inhale (music drops out), hits (boom, flash, camera kick) anchored to shots; camera shake; the takeover rupture (glitch in picture and sound)
-- [ ] 9.3 Sound: riser, hit, sub drop, heartbeat through the Singularity, glitch, Contest war hits and pulse
-- [ ] 9.4 Black beats before the great turns (the Singularity, first contact); card timing
+- [x] 9.2 Beat engine: Regime A dated lines; risers, inhale (music drops out), hits (boom, flash, camera kick) anchored to shots; camera shake; the takeover rupture (glitch in picture and sound)
+- [x] 9.3 Sound: riser, hit, sub drop, heartbeat through the Singularity, glitch, Contest war hits and pulse
+- [x] 9.4 Black beats before the great turns (the Singularity, first contact); card timing
 - [ ] 9.5 Pacing run + event timeline; reviewer pass D (dramatic structure); fixes
 - [ ] 9.6 Verify (build, tests, smoke, full hands-free run), deploy, README, final summary
 
@@ -43,7 +43,7 @@ Phase 9 — Drama (SPEC.md addendum 1: "Make the entire thing more gripping and 
 - Final captures (`captures/final`, `captures/final_g`), README gallery (`docs/media`), final hands-free run.
 
 ## Next action
-Phase 9.2–9.4 are implemented (beat engine `src/app/drama.ts` + `src/chapters/beats.ts`, drama bus and voices in `src/audio`, rupture in PostFX, black beats, turn cards, score hints) and unit-tested; verify the Singularity → Contest stretch (`node scripts/odyssey-run.mjs captures/drama_t2 --fps=4 --every=1 --s0=160 --s1=226`), then a full sound-on pacing run (`--audio`) for reviewer pass D (9.5).
+Reviewer pass D (dramatic structure) is reviewing the full sound-on pacing run: contact sheets + timeline in captures/dramaD/sheets (rebuild with `python3 scripts/contact-sheets.py captures/dramaD/sheets captures/dramaD_A captures/dramaD_B captures/dramaD_C1 captures/dramaD_C3 captures/dramaD_C2`). Report → docs/reviews/passD-drama.md. Then apply its top fixes (9.5), verify, deploy (9.6).
 
 ## Known issues (not blocking)
 - Headless captures must use `?backend=webgl` (see D14); SwiftShader captures are slow (galaxy frames 2–6 min at 960×540 medium).
