@@ -48,24 +48,33 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
   for (const e of evs) {
     const last = beats[beats.length - 1];
     const win = Math.max(1.5e7, e.t * 0.003);
+    // the protagonist's death is always the beat it belongs to
+    const heir = e.type === 'extinct' && e.b === 0;
     if (last && e.t - last.t1 < win) {
       last.t1 = e.t;
-      if (e.weight > last.w) {
-        last.w = e.weight;
+      if (heir || (e.weight > last.w && !(last.ev.type === 'extinct' && last.ev.b === 0))) {
+        last.w = heir ? Math.max(1, e.weight) : e.weight;
         last.ev = e;
       }
-    } else beats.push({ t0: e.t, t1: e.t, w: e.weight, ev: e });
+    } else beats.push({ t0: e.t, t1: e.t, w: heir ? Math.max(1, e.weight) : e.weight, ev: e });
   }
   // keep the strongest (always the first awakening, the bubble, and the last beat)
   const K = Math.min(9, beats.length);
-  const ranked = beats.map((b, i) => ({ b, i, s: b.w + (i === 0 ? 1 : 0) + (b.ev.type === 'vacuum' ? 2 : 0) + (i === beats.length - 1 ? 0.6 : 0) }));
+  const isHeirDeath = (b: Beat): boolean => b.ev.type === 'extinct' && b.ev.b === 0;
+  const ranked = beats.map((b, i) => ({ b, i, s: b.w + (i === 0 ? 1 : 0) + (b.ev.type === 'vacuum' ? 2 : 0) + (isHeirDeath(b) ? 3 : 0) + (i === beats.length - 1 ? 0.6 : 0) }));
   ranked.sort((a, b) => b.s - a.s || a.i - b.i);
-  const chosen = ranked.slice(0, K).sort((a, b) => a.i - b.i).map((r) => r.b);
+  let chosen = ranked.slice(0, K).sort((a, b) => a.i - b.i).map((r) => r.b);
+  // once the mind we built is gone, the war of strangers is told in one more beat at most
+  const hd = chosen.findIndex(isHeirDeath);
+  if (hd >= 0 && chosen.length > hd + 2) {
+    const after = chosen.slice(hd + 1).sort((a, b) => b.w - a.w)[0]!;
+    chosen = [...chosen.slice(0, hd + 1), after];
+  }
   const duration = Math.max(45, Math.min(52, 38 + chosen.length * 1.5));
 
   const keys: Keyframe[] = [[0, 1e9]];
   const shots: ShotDef[] = [];
-  const open = 4.2, close = 5.0;
+  const open = 4.2, close = 4.6;
   const avail = duration - open - close;
   const totW = chosen.reduce((a, b) => a + 0.6 + b.w, 0) || 1;
   let s = open;
@@ -93,7 +102,7 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
   shots.push({
     id: 'co-open', stage: 'galaxy', dur: open, label: 'It was not alone',
     // a held black before "It was not alone." (docs/DRAMA.md)
-    transition: { type: 'fade', dur: 3.2, hold: 1.4 },
+    transition: { type: 'fade', dur: 4.0, hold: 2.1 },
     rig: firstGal === 0 || firstGal === 1 || firstGal === 2
       ? orbit({ center: [0, 0, 0], radius: 52, radiusTo: 46, elev: 1.0, elevTo: 0.95, az: 0.2, azTo: 0.32, fov: 34, ease: easeInOutSine })
       : shoulderRig({ T: first ? first.t0 : 1.2e9, back: 70, backTo: 62, up: 46, upTo: 40, side: 28, sideTo: 22, look: 0.07, fov: 48, fovTo: 44 }),
@@ -157,8 +166,22 @@ export function buildContest(host: GalaxyHost): { shots: ShotDef[]; keys: Keyfra
     rig: merged
       ? orbit({ center: [0, 0, 0], radius: 95, radiusTo: 80, elev: 0.75, elevTo: 0.7, az: 0.4, azTo: 0.6, fov: 36, ease: easeInOutSine })
       : shoulderRig({ T: end, back: 36, backTo: 70, up: 30, upTo: 46, side: 10, sideTo: 26, look: 0.06, fov: 40, fovTo: 48 }),
-    params: { su: 0.7, territory: 2.2 },
+    params: { su: 0.7, territory: 2.2, ...finale(host) },
   });
   void lastBeat;
   return { shots, keys, duration };
 }
+
+/** The Contest's last word: who was left (the vacuum needs none — the bubble says it). */
+function finale(host: GalaxyHost): Record<string, string | number> {
+  const res = host.result!;
+  if (res.outcome === 'vacuum') return {};
+  const v = res.victor;
+  const name = v >= 0 ? host.factions[v]?.name ?? '' : '';
+  let text: string;
+  if (res.outcome === 'annihilation' || v < 0) text = 'Almost nothing was left.';
+  else if (v === 0) text = 'It was alone again.';
+  else text = `Only ${name} was left.`;
+  return { beatType: 'finale', beatText: text, beatT: res.endT, hero: v, heroNode: -1, beatA: v, beatB: -1 };
+}
+

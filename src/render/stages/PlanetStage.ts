@@ -827,7 +827,8 @@ export class PlanetStage extends Stage {
     u.mats.value = w.mats;
     u.vegetation.value = this.sm('veg', w.vegetation, dt, 2);
     u.vitality.value = this.sm('vit', w.vitality, dt, 2);
-    u.traps.value = w.traps;
+    // a shot can show the Traps erupting (the Great Dying): they flare up across the shot
+    u.traps.value = Math.max(w.traps, Number(p.traps ?? 0) * smoothstep(0.15, 0.7, shot.u));
     u.agriculture.value = w.agriculture;
     u.smog.value = w.smog;
     u.relief.value = smoothstep(-60e6, -30e6, f.T);

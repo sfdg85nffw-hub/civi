@@ -6,7 +6,7 @@ import { easeInOutSine, easeOutCubic } from '../core/math';
 import { ECO_FATE } from '../sim/agents/ecosystem';
 
 const life: ShotDef = {
-  id: 'a-life', stage: 'land', dur: 5.5, label: 'The living land', signature: true,
+  id: 'a-life', stage: 'land', dur: 5, label: 'The living land', signature: true,
   transition: { type: 'dive', dur: 1.3 },
   rig: push({ from: [-1.6, 2.4, 3.0], to: [-0.4, 1.7, 2.1], target: [0.2, 0.05, -0.3], targetTo: [0.4, 0.0, -0.6], fov: 38, ease: easeInOutSine, shake: 0.01 }),
   params: { su: 0.6 },
@@ -19,20 +19,20 @@ export const animals: ChapterDef = {
   cues: [{ T: -2.52e8, id: 'glass' }],
   shots: [
     {
-      id: 'a-greening', stage: 'planet', dur: 7, label: 'Greening and drift',
+      id: 'a-greening', stage: 'planet', dur: 6, label: 'Greening and drift',
       transition: { type: 'dissolve', dur: 1.0 },
       rig: orbit({ radius: 4.6, radiusTo: 4.1, elev: 0.18, elevTo: 0.1, az: -0.2, azTo: 0.15, fov: 34, ease: easeInOutSine, targetOffset: [0.45, 0, 0] }),
       params: { lat: 5, lon: 15, spin: 50, sunAz: 100, sunEl: 20, stars: 0.12, su: 0.7 },
     },
     life,
     {
-      id: 'a-dying', stage: 'planet', dur: 3, label: 'The Great Dying',
+      id: 'a-dying', stage: 'planet', dur: 5, label: 'The Great Dying',
       transition: { type: 'dissolve', dur: 1.0 },
       rig: orbit({ radius: 3.4, radiusTo: 3.1, elev: 0.25, az: 0.1, azTo: -0.05, fov: 32, ease: easeInOutSine, targetOffset: [-0.35, 0.1, 0] }),
-      params: { focusTraps: 1, dLat: -8, dLon: 18, spin: 8, sunAz: 158, sunEl: 15, stars: 0.18, su: 0.55 },
+      params: { focusTraps: 1, dLat: -4, dLon: 8, spin: 6, sunAz: 100, sunEl: 10, stars: 0.18, su: 0.75, moonlight: 0.1, traps: 1 },
     },
     {
-      id: 'a-drift', stage: 'planet', dur: 5, label: 'Drift', signature: true,
+      id: 'a-drift', stage: 'planet', dur: 4.5, label: 'Drift', signature: true,
       transition: { type: 'dissolve', dur: 1.0 },
       rig: orbit({ radius: 4.9, radiusTo: 4.6, elev: 0.18, az: 0.15, azTo: -0.1, fov: 32, ease: easeInOutSine, targetOffset: [0, 0, 0] }),
       params: { lat: 0, lon: -10, spin: 40, sunAz: 62, sunEl: 18, stars: 0.12, su: 0.6, aridK: 0.55 },

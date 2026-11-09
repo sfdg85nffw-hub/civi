@@ -264,7 +264,7 @@ export class CodaStage extends Stage {
     const vac = shot.def.params?.vacuum ? 1 : 0;
     u.vacuum.value = vac;
     // stars: blue → red → black by +10^14 (c ≈ 8.5–11)
-    u.starLife.value = 1 - smoothstep(7.5, 11.5, c);
+    u.starLife.value = 1 - smoothstep(6.0, 9.0, c);
     u.swarm.value = vac ? 0 : 1;
     const cam = this.camera;
     const aspect = cam.aspect || 16 / 9;

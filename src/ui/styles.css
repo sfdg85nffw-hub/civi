@@ -53,6 +53,8 @@ button:focus-visible { outline: 1px solid var(--ink-dim); outline-offset: 4px; }
 /* the great turns (We built a mind. / It did not stop at the Sun. / It was not alone.) */
 .card.turn .line { font-weight: 200; font-size: clamp(22px, 3.7vmin, 42px); letter-spacing: 0.26em; padding-left: 0.26em; }
 .card.turn .date { margin-bottom: 2.1em; }
+/* a soft dark backing, so a card never fights a busy picture */
+.card::before { content: ''; position: absolute; left: 50%; top: 50%; width: min(980px, 92vw); height: 11em; transform: translate(-50%, -50%); background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,0.6), rgba(0,0,0,0.28) 55%, rgba(0,0,0,0) 75%); z-index: -1; pointer-events: none; }
 
 /* ---------- chronicle ---------- */
 .chronicle { position: fixed; left: 5vw; bottom: 9.5vh; max-width: min(92ch, 86vw); pointer-events: none; }

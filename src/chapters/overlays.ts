@@ -114,13 +114,17 @@ PlanetStage.overlays[5] = (stage, f) => {
       const w = cityWeight(c, year);
       o.lat = c.lat;
       o.lon = c.lon;
-      // the first cities are few, so each must read: brighter and a little larger early on
-      o.size = 0.005 + 0.008 * Math.sqrt(w);
-      let k = (3.6 + 6.0 * civ) * w;
+      // the first cities are few, so each must read: brighter and a little larger early on;
+      // a city flares as it is founded (for ~0.7 s of screen time), so the cradles ignite one by one
+      const age = year - c.from;
+      const flare = Math.exp(-age / Math.max(40, Math.abs(f.speed) * 0.7));
+      o.size = (0.005 + 0.008 * Math.sqrt(w)) * (1 + 1.6 * flare);
+      let k = (3.6 + 6.0 * civ) * Math.max(w, 0.25 * flare) * (1 + 3 * flare);
       if (plagueFront > 0) {
         const D = Math.PI / 180;
         const dd = Math.acos(Math.sin(c.lat * D) * Math.sin(45.03 * D) + Math.cos(c.lat * D) * Math.cos(45.03 * D) * Math.cos((c.lon - 35.38) * D)) / D;
-        if (dd < plagueFront && dd > plagueFront - 60) k *= 0.25;
+        // the wake of the plague: the lights it has passed go nearly out, then slowly return
+        if (dd < plagueFront && dd > plagueFront - 75) k *= 0.08 + 0.92 * Math.max(0, (plagueFront - 40 - dd) / 35);
       }
       o.r = 1.0 * k;
       o.g = 0.62 * k;
@@ -321,7 +325,7 @@ PlanetStage.overlays[7] = (stage, f) => {
       o.lat = LAST_LIGHT[0];
       o.lon = LAST_LIGHT[1];
       o.size = 0.005;
-      const v = 4.5 * lastOn * flick * Math.max(0.3, 1 - f.world.humanLights * 0.9);
+      const v = 7.0 * lastOn * flick * Math.max(0.3, 1 - f.world.humanLights * 0.9);
       o.r = v;
       o.g = 0.6 * v;
       o.b = 0.28 * v;

@@ -140,13 +140,15 @@ export class PostFX {
         const sp = vec2(g.mul(0.014).mul(h2.add(0.4)), 0.0);
         a.assign(vec3(texA.sample(pA.add(sp)).r, a.y.div(max(this.uExposure, 0.0001)), texA.sample(pA.sub(sp)).b).mul(this.uExposure).mul(float(1.0).sub(torn.mul(g).mul(0.25))));
       });
-      const b = texB.sample(pB).rgb.mul(this.uExposureB);
+      // the dive magnifies B up to 4×: outside its frame there is nothing (no clamped edge smears)
+      const inB = step(0.0, pB.x).mul(step(pB.x, 1.0)).mul(step(0.0, pB.y)).mul(step(pB.y, 1.0));
+      const b = texB.sample(clamp(pB, 0.0, 1.0)).rgb.mul(this.uExposureB).mul(inB);
       const d = p.sub(0.5).mul(vec2(uAspect, 1.0));
       const r = length(d);
       const radialW = smoothstep(uMix.mul(1.3).sub(0.25), uMix.mul(1.3), r).oneMinus();
       const iris = smoothstep(uMix.mul(1.25).sub(0.12), uMix.mul(1.25).add(0.02), r).oneMinus().mul(smoothstep(0.0, 0.25, uMix));
       const wMatch = mix(radialW, uMix, 0.35);
-      const w = select(isDive, mix(iris, uMix, 0.25), select(uMixMode.greaterThan(0.5), wMatch, uMix));
+      const w = select(isDive, mix(iris, float(1.0), smoothstep(0.8, 1.0, uMix)), select(uMixMode.greaterThan(0.5), wMatch, uMix));
       return mix(a, b, clamp(w, 0.0, 1.0));
     })();
 

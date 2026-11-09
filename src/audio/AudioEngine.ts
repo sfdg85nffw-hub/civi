@@ -17,6 +17,8 @@ export interface AudioFrame {
   toneDb: number;
   /** 0..1 Return chord */
   chord: number;
+  /** score bed gain (the drama's swells into peaks and troughs after them); default 1 */
+  bed?: number;
 }
 
 const A3 = 220;
@@ -289,6 +291,7 @@ export class AudioEngine {
     const now = ctx.currentTime;
     // silence gate and Tone
     glide(this.silenceGate.gain, clamp01(a.music), now, a.music < 0.05 ? 0.05 : 0.6);
+    glide(this.musicBus.gain, clamp(a.bed ?? 1, 0.3, 2), now, 1.2);
     glide(this.toneGain.gain, a.toneDb <= -90 ? 0 : dbToGain(a.toneDb), now, 0.4);
     glide(this.chordGain.gain, 0.32 * a.chord, now, 1.2);
     this.chordVoices.forEach((g, i) => glide(g.gain, a.chord > 0 ? clamp01(a.chord * 2.2 - i * 0.22) * (0.32 / (1 + i * 0.25)) : 0, now, 1.5));

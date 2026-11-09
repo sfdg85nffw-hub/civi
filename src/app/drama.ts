@@ -52,6 +52,8 @@ export class DramaEngine {
   tension = 0;
   /** 0..1 after a big hit, decaying (impact winter in the score) */
   aftermath = 0;
+  /** score bed gain: swells (~+4 dB) into the great peaks, then sits lower after them */
+  bed = 1;
 
   constructor(private sinks: DramaSinks) {}
 
@@ -75,12 +77,14 @@ export class DramaEngine {
     // the Contest: each beat's event lands on its own moment in the time map
     for (const x of director.shotsFor(9)) {
       const p = x.def.params;
-      const ty = typeof p?.beatType === 'string' ? p.beatType : '';
+      let ty = typeof p?.beatType === 'string' ? p.beatType : '';
+      // the mind we built going out is the Contest's climax
+      if (ty === 'extinct' && Number(p?.beatB ?? -1) === 0) ty = 'heirExtinct';
       const st = CONTEST_STROKES[ty];
       if (!st || p?.beatT === undefined) continue;
       const T = Number(p.beatT);
-      // never earlier than the shot itself (the cut is the beat's entrance)
-      const s = Math.max(x.s0 + 0.2, Math.min(x.s0 + x.dur - 0.3, odyssey.s(T)));
+      // never earlier than the shot itself (the cut is the beat's entrance); the finale lands early in its shot
+      const s = ty === 'finale' ? x.s0 + Math.min(1.8, x.dur * 0.4) : Math.max(x.s0 + 0.2, Math.min(x.s0 + x.dur - 0.3, odyssey.s(T)));
       out.push({ key: x.def.id, b: { id: x.def.id, ...st }, s, T });
     }
     out.sort((a, b) => a.s - b.s);
@@ -100,9 +104,16 @@ export class DramaEngine {
     const crossed = (x: number): boolean => continuous && this.prevS < x && s >= x;
     let tension = 0;
     let duck = 1;
+    let bedUp = 1, bedDown = 1;
     if (f.mode === 'odyssey') {
       for (const p of this.placed) {
         const b = p.b;
+        // the score rises into the great peaks and sits lower after them
+        if (b.swell) {
+          const s0 = p.s - (b.inhale ?? 0) - b.swell;
+          if (s >= s0 && s < p.s) bedUp = Math.max(bedUp, 1 + 0.6 * smoothstep(s0, p.s - (b.inhale ?? 0), s));
+          if (s >= p.s && s < p.s + 9) bedDown = Math.min(bedDown, 0.66 + 0.34 * smoothstep(p.s + 6, p.s + 9, s));
+        }
         // build: the riser is scheduled to peak exactly on the anchor
         if (b.build && crossed(p.s - b.build)) this.sinks.riser(Math.max(0.4, p.s - s));
         if (b.build && s > p.s - b.build && s < p.s) tension = Math.max(tension, (s - (p.s - b.build)) / b.build);
@@ -131,6 +142,7 @@ export class DramaEngine {
     if (this.glitchLeft > 0) this.glitchLeft = Math.max(0, this.glitchLeft - f.dt);
     this.tension = tension;
     this.duck = duck;
+    this.bed = bedUp * bedDown;
     this.aftermath = this.afterEnv;
     this.shake = Math.max(this.kickEnv, tension * tension * 0.18);
     this.glitch = this.glitchLeft > 0 ? Math.min(1, this.glitchLeft / Math.min(0.25, this.glitchDur)) * (0.7 + 0.3 * Math.random()) : 0;

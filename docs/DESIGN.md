@@ -88,7 +88,7 @@ Conventions
 
 ## Chapter 2 — THE MANY-CELLED  (−1.6 Gya → −500 Mya, story 35–60 s)
 
-**Card**: `1.6 BILLION YEARS AGO` / `One swallowed another, and both lived.`
+**Card**: `1.6 BILLION YEARS AGO` / `One swallowed another. Both lived.`
 
 **Milestones**
 | T | Event |
@@ -203,7 +203,7 @@ Conventions
 
 ## Chapter 5 — ANCIENT CIVILIZATIONS  (10,000 BCE → 1500 CE, story 110–140 s)
 
-**Card**: `10,000 BCE` / `Seeds, and the waiting.`
+**Card**: `10,000 BCE` / `We stopped walking.`
 
 **Milestones** (founding regions light up on the globe at real coordinates)
 | Date | Event |

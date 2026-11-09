@@ -80,3 +80,11 @@ with a hit; the collision and the vacuum are built up to; a low pulse quickens w
 | 220 | co-open | First contact | (card: +1 BILLION YEARS / It was not alone.) | held black, silence, hit, card |
 | 220–265 | co-beat* | The war | the chronicle | hits on war, betrayal, extinction; build into the collision and the vacuum; quickening pulse |
 | 265– | Coda | — | no lines | unchanged |
+
+## After review pass D (docs/reviews/passD-drama.md)
+
+- **Timing**: Ancient Civilizations is 24 s (110–134), the Modern World 31 s (134–165); within them the cradles take 5 s, the plague 5 s (built up to), Trinity lands ≈148, the mote climbs ≈152–155 with *July 1969. Someone left.* on it, *2022* ≈159. The Great Dying is a 5-s shot on the lit side, hit ≈74.75. The Singularity holds 2.6 s of true black before its card; the dark lattice holds through the silence after the last light. The Contest opens with 2.1 s of black.
+- **Text rules (code)**: one line at a time; minimum reading time 1.5 s + 0.3 s/word, a waiting line is dropped after 2.6 s; the page clears 1 s before every chapter turn and stays clear through its card; the Expansion speaks only in its own lines; Contest lines at least 4 s apart; units in words.
+- **The Contest's voice**: "It" is the mind we built, to the end. Rivals are named by where they came from — *the mind in Andromeda*, *the mind from the dark*, *the new light* (our own galaxy), *the hidden mind*. Deaths *go out*. The protagonist's death is the climax (built, inhaled, hit 1.0), then at most one beat, then the last word: *It was alone again.* / *Only the mind from the dark was left.* / *Almost nothing was left.* (the vacuum needs no word).
+- **Hit ranks**: Chicxulub 1.0 = the protagonist's death = the vacuum > finale 0.9 > Trinity 0.85 = first contact > takeover 0.8 > the collision 0.7 > everything else ≤ 0.55; full strokes (inhale + kick) are rationed.
+- **Swells**: the score rises ~4–5 dB into Chicxulub, Trinity, the protagonist's death and the finale, and sits ~3.5 dB lower for six seconds after each.

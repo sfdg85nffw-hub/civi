@@ -270,7 +270,8 @@ export class SeafloorStage extends Stage {
     const side = normalize(vec3(dir.y.negate(), dir.x, 0.0));
     const corner = positionGeometry.xy;
     const along = corner.x.add(0.5);
-    const wdt = mix(A.w, B.w, along).mul(1.8);
+    // bodies large and bright enough that a chase reads across the frame
+    const wdt = mix(A.w, B.w, along).mul(2.6);
     const vp = mix(v0, v1, along).add(side.mul(corner.y.mul(wdt)));
     mat.vertexNode = cameraProjectionMatrix.mul(vec4(vp, 1.0));
     const vUV = varying(vec2(along, corner.y.mul(2.0)));
@@ -286,7 +287,7 @@ export class SeafloorStage extends Stage {
       // a travelling shimmer of light along the body
       const shimmer = sin(vC.w.mul(14.0).sub(u.time.mul(5.0))).mul(0.35).add(0.75);
       const head = sst(0.12, 0.0, vC.w).mul(0.8);
-      return vec4(col.mul(core.mul(0.45).add(halo.mul(0.6))).mul(shimmer.add(head)).mul(vC.z).mul(u.lod), 1.0);
+      return vec4(col.mul(core.mul(0.85).add(halo.mul(0.9))).mul(shimmer.add(head)).mul(vC.z).mul(u.lod), 1.0);
     })();
     const mesh = new THREE.Mesh(geo, mat);
     mesh.frustumCulled = false;

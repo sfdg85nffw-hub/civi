@@ -61,3 +61,12 @@ fixes by impact. Its report is saved here verbatim; the fixes applied are listed
 - Fronts are two hairline seams, one per power, just inside the contact line (no hatching).
 - The collision's tides are stronger, with wider sweeping tails; Andromeda's old disk is cooler.
 - Coda: the island glow in Candles is ~3× wider; the last point's core is twice as bright; the montage iris rim is a hairline and the run inside it is half-drained and washed in the victor's colour; the settled ring is tighter.
+| D | Dramatic structure, whole film (one frame per story second + event timeline) | [passD-drama.md](passD-drama.md) |
+
+### Fixes applied after pass D
+- Text rules in code (one line at a time, minimum reading time, page cleared before every card, cards backed); line rewrites (shorter, units in words, two factual fixes: +200,000 years for one mind across the disk, the Silk Road line cut); the Expansion's raw event stream muted; the Contest in the film's voice ("It" for the mind we built, rivals named by where they came from).
+- The Contest: the protagonist's death as the climax, at most one beat after it, and a closing line saying who was left; hits rationed and ranked.
+- The middle: Ancient compressed by 6 s, Modern given the time; the cradles ignite one by one; the plague built up to, with a dark wake; 1969 held for ~3.5 s with its line on the mote.
+- The great turns: the Great Dying on the lit side (the Traps at the terminator, the hit later in a longer shot); held blacks of 2.6 s and 2.1 s before the two great turns, cards out of the black; the dark lattice held through the silence after the last light (the swarm arrives with the sound); the last light brighter.
+- Sound: swells into the peaks and troughs after them.
+- Coda: the stars are dead before the dark (no starfield after their death); the dive transition no longer smears clamped edges into slice-like streaks (they read as an early rupture); the fork control waits until after the takeover card.

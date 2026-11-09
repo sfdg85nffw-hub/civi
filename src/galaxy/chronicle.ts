@@ -3,8 +3,8 @@
  * never announced.
  */
 export function formatEpoch(T: number): string {
-  if (T >= 1e9) return `+${(T / 1e9).toFixed(T < 1e10 ? 2 : 1).replace(/0$/, '')} Gyr`;
-  if (T >= 1e6) return `+${(T / 1e6).toFixed(T < 1e7 ? 2 : 1).replace(/0$/, '')} Myr`;
+  if (T >= 1e9) return `+${(T / 1e9).toFixed(T < 1e10 ? 2 : 1).replace(/\.?0+$/, '')} billion years`;
+  if (T >= 1e6) return `+${(T / 1e6).toFixed(T < 1e7 ? 1 : 0).replace(/\.0$/, '')} million years`;
   if (T >= 1e4) return `+${Math.round(T / 1e3).toLocaleString('en-US')},000 years`;
   return `+${Math.round(T).toLocaleString('en-US')} years`;
 }
@@ -39,9 +39,9 @@ export const TEMPLATES: Record<string, string[]> = {
   merge: ['{A} and {B} became one mind.', '{A} and {B} were no longer two.'],
   betrayal: ['{A} broke faith with {B}.'],
   swallow: ['{A} took in what was left of {B}.'],
-  extinct: ['The last of {B} went out in {P}.', '{B} ended in {P}.'],
+  extinct: ['The last of {B} went out in {P}.', '{B} went out in {P}.'],
   clouds: ['The Clouds fell into the Milky Way.'],
-  andromeda: ['Andromeda arrived.'],
+  andromeda: ['The galaxies fell into each other.'],
   merged: ['The two galaxies became one.'],
   vacuum: ['Near {P}, the vacuum gave way.'],
   totalWar: ['After that, {A} and {B} aimed at everything.', '{A} and {B} stopped counting what it cost.'],

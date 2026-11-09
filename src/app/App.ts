@@ -6,6 +6,7 @@ import { Director, type DirectorOut } from '../director/Director';
 import { DramaEngine } from './drama';
 import type { CamPose } from '../director/types';
 import { LAST_LIGHT_T } from '../data/singularity';
+import { buildEpithets, voice } from '../galaxy/voice';
 import { FreeCamera } from '../director/FreeCamera';
 import { CHAPTERS, chapterById, TAKEOVER_T } from '../chapters/meta';
 import { CHAPTER_DEFS, STAGE_FACTORIES } from '../chapters/registry';
@@ -229,11 +230,7 @@ export class App {
     this.card = new Card(this.ui);
     this.chronicle = new Chronicle(this.ui);
     this.drama = new DramaEngine({
-      line: (date, text) => {
-        this.chronicle.retire();
-        this.chronicle.push(date ? date + '.' : '', (date ? ' ' : '') + text, 6.2);
-        this.dramaLog.push({ s: this.time.storyTime, kind: 'line', what: (date ? date + '. ' : '') + text });
-      },
+      line: (date, text) => this.say(date, text, 'drama'),
       riser: (sec) => {
         this.audio?.drama('riser', sec);
         this.dramaLog.push({ s: this.time.storyTime, kind: 'build', what: sec.toFixed(1) + ' s' });
@@ -394,6 +391,7 @@ export class App {
     if (!g.result) return;
     const c = buildContest(g);
     contest.shots = c.shots;
+    this.epithets = buildEpithets(g.factions as never, g.events, (node) => g.u.gal[node] ?? 0);
     coda.shots = codaShots(g.result.endT > MERGED_T, g.result.outcome === 'vacuum');
     const s = this.time.storyTime;
     const T = this.time.T;
@@ -496,16 +494,18 @@ export class App {
 
   /** feed the chronicle: terse lines for events just crossed, never a flood */
   private feedChronicle(T: number, dt: number): void {
-    if (T < TAKEOVER_T || !this.galaxy.events.length) {
+    // in the Odyssey the Expansion is told by its own few lines; the raw stream starts with the Contest
+    if (T < TAKEOVER_T || !this.galaxy.events.length || (this.time.mode === 'odyssey' && T < 1e9)) {
       this.lastChronT = T;
       return;
     }
+    const v = (t: string): string => (this.epithets.length ? voice(t, this.galaxy.factions, this.epithets) : t);
     const t0 = this.lastChronT, t1 = T;
     this.lastChronT = T;
     if (t1 > t0 && t1 - t0 < Math.max(5e9, Math.abs(this.time.speed) * 2)) {
       for (const e of this.galaxy.events) {
         if (e.t > t1) break;
-        if (e.t > t0 && e.text) this.chronQueue.push(e);
+        if (e.t > t0 && e.text && e.type !== 'launch') this.chronQueue.push(e);
       }
       if (this.chronQueue.length > 4) {
         // keep the weightiest few, in order
@@ -523,7 +523,8 @@ export class App {
         this.lastBeatT = bt;
         // the beat's line replaces whatever lesser lines were waiting
         this.chronQueue = this.chronQueue.filter((e) => e.t > bt && e.weight >= 0.9 && e.text !== bp.beatText);
-        this.chronicle.push(formatEpoch(bt) + '.', ' ' + bp.beatText, 5.5);
+        this.lineQueue = [];
+        this.say(formatEpoch(bt), v(bp.beatText), 'contest');
         this.lastChronPush = this.clock;
         const actor = Number(bp.hero ?? -1);
         const fi = actor >= 0 ? this.galaxy.factions[actor] : undefined;
@@ -534,9 +535,9 @@ export class App {
     // lines that fell behind the picture are dropped: the chronicle always matches the beat on screen
     const stale = Math.max(2e5, Math.abs(this.time.speed) * 1.6);
     this.chronQueue = this.chronQueue.filter((e) => T - e.t < stale);
-    if (this.chronQueue.length && this.clock - this.lastChronPush > 2.4) {
+    if (this.chronQueue.length && this.clock - this.lastChronPush > 4.0) {
       const e = this.chronQueue.shift()!;
-      this.chronicle.push(formatEpoch(e.t) + '.', ' ' + e.text, 5.5);
+      this.say(formatEpoch(e.t), v(e.text), 'contest');
       this.lastChronPush = this.clock;
       // the actor's motif; a nova is heard as a far boom; the vacuum is silent
       const actor = e.a >= 0 ? e.a : e.b;
@@ -641,7 +642,7 @@ export class App {
     // chapter cards (Odyssey): shortly after the chapter begins
     if (this.time.mode === 'odyssey' && this.cardShownFor !== chapter) {
       // after the black beats (the Singularity, first contact) and the rupture (the takeover), later
-      const delay = chapter === 0 ? 2.2 : chapter === 7 || chapter === 9 ? 1.3 : chapter === 8 ? 1.5 : 0.7;
+      const delay = chapter === 0 ? 2.2 : chapter === 7 ? 2.6 : chapter === 9 ? 2.2 : chapter === 8 ? 1.5 : 0.7;
       if (s - span.s0 > delay && s - span.s0 < delay + 2) this.showCard(chapter);
     }
 
@@ -679,6 +680,15 @@ export class App {
     };
     // the beat engine: builds, inhales, hits, ruptures, dated lines
     this.drama.update({ s, T, mode: this.time.mode, dt, paused: this.time.paused || this.phase !== 'running' }, this.director, this.time.odyssey);
+    // text hygiene: the page clears a second before each chapter turn and stays clear through its card
+    if (this.time.mode === 'odyssey' && chapter < 10) {
+      const next = this.time.odyssey.span(Math.min(10, chapter + 1));
+      if (next.s0 - s < 1.0 && next.s0 - s > 0 && this.quietUntilS < next.s0) {
+        this.chronicle.retire();
+        this.quietUntilS = next.s0 + (chapter + 1 === 7 || chapter + 1 === 9 ? 4.2 : chapter + 1 === 8 ? 3.2 : 2.4);
+      }
+    }
+    this.flushLines();
     // sim-time cues of this chapter (fire when crossed forward)
     for (const c of chDef?.cues ?? []) if (this.lastT < c.T && T >= c.T && T - this.lastT < 5e8) this.fireCue(c.id);
 
@@ -690,8 +700,8 @@ export class App {
     this.card.update(dt);
     const codaC = this.updateCoda(chapter, s, T);
     // at the takeover, the fork control surfaces on its own for a few seconds
-    if (this.lastT < TAKEOVER_T && T >= TAKEOVER_T && T - this.lastT < 1e4) this.forkShownUntil = this.clock + 7;
-    this.hud.forkVisible = this.clock < this.forkShownUntil && chapter === 8;
+    if (this.lastT < TAKEOVER_T && T >= TAKEOVER_T && T - this.lastT < 1e4) this.forkShownUntil = this.clock + 14;
+    this.hud.forkVisible = this.clock < this.forkShownUntil && this.clock > this.forkShownUntil - 6 && chapter === 8;
     if (codaC < 0) this.feedChronicle(T, dt);
     this.chronicle.update(dt);
     this.time.frontier = this.galaxy.done ? Infinity : Math.max(TAKEOVER_T, this.galaxy.frontier);
@@ -743,6 +753,7 @@ export class App {
         lodMix: this.lodMix,
         hints: this.hints,
         music: this.clock < this.silenceUntil ? 0 : (this.audioOverride.music ?? 1) * this.drama.duck,
+        bed: this.drama.bed,
         toneDb: this.audioOverride.toneDb ?? (chapter === 0 ? -40 : -52),
         chord: this.audioOverride.chord ?? 0,
       });
@@ -832,6 +843,12 @@ export class App {
   private forkShownUntil = -1;
   private lastOut: DirectorOut | null = null;
   private drama!: DramaEngine;
+  /** text hygiene: one line at a time, each on screen long enough to be read */
+  private lineQueue: { date: string; text: string; at: number }[] = [];
+  private lineShownAt = -1e9;
+  private lineMinLife = 0;
+  private quietUntilS = -1;
+  private epithets: string[] = [];
   /** what the drama engine did, in story time (for the pacing review) */
   private dramaLog: { s: number; kind: string; what: string }[] = [];
   /** Coda */
@@ -841,6 +858,27 @@ export class App {
   private counter: HTMLDivElement | null = null;
   /** capture mode: frames still allowed to advance time after ready */
   private runFrames = 0;
+
+  /** queue a dated line: it waits until the previous line has been readable, and is dropped if it waits too long */
+  private say(date: string, text: string, from: 'drama' | 'contest'): void {
+    this.lineQueue.push({ date, text, at: this.clock });
+    this.dramaLog.push({ s: this.time.storyTime, kind: 'line', what: (date ? date + '. ' : '') + text + (from === 'contest' ? ' (chronicle)' : '') });
+    this.flushLines();
+  }
+
+  private flushLines(): void {
+    const s = this.time.mode === 'odyssey' ? this.time.storyTime : -1;
+    this.lineQueue = this.lineQueue.filter((l) => this.clock - l.at < 2.6);
+    if (!this.lineQueue.length) return;
+    if (s >= 0 && s < this.quietUntilS) return;
+    if (this.clock - this.lineShownAt < this.lineMinLife) return;
+    const l = this.lineQueue.shift()!;
+    const words = (l.date + ' ' + l.text).split(/\s+/).length;
+    this.chronicle.retire();
+    this.chronicle.push(l.date ? l.date + '.' : '', (l.date ? ' ' : '') + l.text, Math.max(4.2, 1.5 + 0.3 * words + 2.2));
+    this.lineShownAt = this.clock;
+    this.lineMinLife = 1.5 + 0.3 * words;
+  }
 
   /** the camera trembles through a build and kicks on a hit (a translation, scaled to the framing) */
   private shaken(pose: CamPose): CamPose {
