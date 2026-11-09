@@ -518,7 +518,9 @@ export class App {
     const bp = bsh?.def.params;
     if (bsh && bp && typeof bp.beatText === 'string' && bsh.def.id !== this.lastBeatId) {
       const bt = Number(bp.beatT ?? 0);
-      if (T >= bt - Math.abs(this.time.speed) * 0.4 || bsh.u > 0.3) {
+      // the line lands with its event (the finale's with its stroke, early in the closing shot)
+      const due = bp.beatType === 'finale' ? bsh.u >= 0.36 : T >= bt - Math.abs(this.time.speed) * 0.15 || bsh.u > 0.9;
+      if (due) {
         this.lastBeatId = bsh.def.id;
         this.lastBeatT = bt;
         // the beat's line replaces whatever lesser lines were waiting
@@ -687,7 +689,8 @@ export class App {
       const next = this.time.odyssey.span(Math.min(10, chapter + 1));
       if (next.s0 - s < 1.0 && next.s0 - s > 0 && this.quietUntilS < next.s0) {
         this.chronicle.retire();
-        this.quietUntilS = next.s0 + (chapter + 1 === 7 || chapter + 1 === 9 ? 4.2 : chapter + 1 === 8 ? 3.2 : 2.4);
+        // through the whole card of a great turn (black + card), through the first beat of the others
+        this.quietUntilS = next.s0 + (chapter + 1 === 7 ? 8.6 : chapter + 1 === 9 ? 8.2 : chapter + 1 === 8 ? 7.4 : 2.4);
       }
     }
     this.flushLines();
